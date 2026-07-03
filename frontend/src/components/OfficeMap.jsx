@@ -19,8 +19,8 @@ const OfficeMap = ({ devices = [] }) => {
   const floorFill = "#18181b";
 
   return (
-    <div className="relative w-full h-[500px] bg-zinc-900/40 rounded-2xl overflow-hidden border border-white/5 p-4 flex items-center justify-center">
-      <svg viewBox={`0 0 ${canvasW} ${canvasH}`} className="w-full h-full max-w-5xl drop-shadow-2xl">
+    <div className="relative w-full aspect-[5/3] min-h-[300px] bg-zinc-900/40 rounded-2xl overflow-hidden border border-white/5 p-4 flex items-center justify-center">
+      <svg viewBox={`0 0 ${canvasW} ${canvasH}`} preserveAspectRatio="xMidYMid meet" className="w-full h-full drop-shadow-2xl">
         
         {/* Outer Building Shadow/Base */}
         <rect x={70} y={40} width={860} height={500} fill="#111113" stroke={wallStroke} strokeWidth="8" rx="4" />

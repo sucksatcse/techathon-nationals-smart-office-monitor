@@ -21,6 +21,12 @@ body {
   min-height: 100vh;
 }
 
+#root {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+}
+
 @layer components {
   .dashboard-card {
     background-color: var(--color-card);
@@ -28,7 +34,29 @@ body {
   }
 }
 
-/* Animations for fans */
+/* ===== Responsive Grid Utilities ===== */
+
+/* Stat cards: fluid 1→4 columns using auto-fit */
+.stat-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem; /* 24px */
+}
+
+/* Main dashboard section: Office Map (2fr) | Quick Room Status (1fr) */
+.dashboard-main-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem; /* 32px */
+}
+
+@media (min-width: 1024px) {
+  .dashboard-main-grid {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+/* ===== Animations for fans ===== */
 @keyframes fan-spin {
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
@@ -38,7 +66,7 @@ body {
   animation: fan-spin 0.5s linear infinite;
 }
 
-/* Glow effect for lights */
+/* ===== Glow effect for lights ===== */
 .bulb-glow {
   filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.6));
 }

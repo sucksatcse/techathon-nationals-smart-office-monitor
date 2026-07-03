@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Zap, AlertTriangle, Monitor, Settings, Activity, Home, BarChart3 } from 'lucide-react';
+import { Layout, Zap, AlertTriangle, Monitor, Settings, Activity, Home, BarChart3, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficeMap from './components/OfficeMap';
 
@@ -7,6 +7,7 @@ const rooms = ['Drawing Room', 'Work Room 1', 'Work Room 2'];
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [apiData, setApiData] = useState(null);
 
@@ -39,13 +40,34 @@ function App() {
 
   return (
     <div className="flex h-screen w-full bg-background text-zinc-100 font-sans overflow-hidden">
+      {/* Sidebar Overlay (mobile) */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden" 
+          onClick={() => setSidebarOpen(false)} 
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-sidebar border-r border-white/5 flex flex-col pt-8">
-        <div className="px-6 mb-10 flex items-center gap-3">
-          <div className="bg-primary/20 p-2 rounded-lg">
-            <Layout className="w-6 h-6 text-primary" />
+      <aside className={`
+        fixed inset-y-0 left-0 z-50 w-64 bg-sidebar border-r border-white/5 flex flex-col pt-8
+        transform transition-transform duration-300 ease-in-out
+        lg:relative lg:translate-x-0 lg:shrink-0
+        ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+      `}>
+        <div className="px-6 mb-10 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-primary/20 p-2 rounded-lg">
+              <Layout className="w-6 h-6 text-primary" />
+            </div>
+            <h1 className="font-bold text-xl tracking-tight">SmartOffice</h1>
           </div>
-          <h1 className="font-bold text-xl tracking-tight">SmartOffice</h1>
+          <button 
+            className="lg:hidden p-1 rounded-lg hover:bg-white/5 text-zinc-400 hover:text-zinc-100 transition-colors" 
+            onClick={() => setSidebarOpen(false)}
+          >
+            <X size={20} />
+          </button>
         </div>
 
         <nav className="flex-1 px-4 space-y-1">
@@ -53,32 +75,32 @@ function App() {
             icon={<Home size={20} />} 
             label="Dashboard" 
             active={activeTab === 'dashboard'} 
-            onClick={() => setActiveTab('dashboard')} 
+            onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false); }} 
           />
           <NavItem 
             icon={<Monitor size={20} />} 
             label="Office Layout" 
             active={activeTab === 'layout'} 
-            onClick={() => setActiveTab('layout')} 
+            onClick={() => { setActiveTab('layout'); setSidebarOpen(false); }} 
           />
           <NavItem 
             icon={<BarChart3 size={20} />} 
             label="Energy Usage" 
             active={activeTab === 'energy'} 
-            onClick={() => setActiveTab('energy')} 
+            onClick={() => { setActiveTab('energy'); setSidebarOpen(false); }} 
           />
           <NavItem 
             icon={<AlertTriangle size={20} />} 
             label="Alerts" 
             active={activeTab === 'alerts'} 
-            onClick={() => setActiveTab('alerts')} 
+            onClick={() => { setActiveTab('alerts'); setSidebarOpen(false); }} 
             badge={2}
           />
           <NavItem 
             icon={<Activity size={20} />} 
             label="Analytics" 
             active={activeTab === 'analytics'} 
-            onClick={() => setActiveTab('analytics')} 
+            onClick={() => { setActiveTab('analytics'); setSidebarOpen(false); }} 
           />
         </nav>
 
@@ -88,10 +110,16 @@ function App() {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col overflow-hidden">
+      <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="h-20 border-b border-white/5 flex items-center justify-between px-8 bg-background/50 backdrop-blur-md z-10">
-          <div className="flex items-center gap-4">
+        <header className="h-16 lg:h-20 border-b border-white/5 flex items-center justify-between px-4 lg:px-8 bg-background/50 backdrop-blur-md z-10">
+          <div className="flex items-center gap-3 lg:gap-4">
+            <button 
+              className="lg:hidden p-2 rounded-lg hover:bg-white/5 text-zinc-400 hover:text-zinc-100 transition-colors" 
+              onClick={() => setSidebarOpen(true)}
+            >
+              <Menu size={22} />
+            </button>
             <h2 className="text-xl font-semibold capitalize">{activeTab}</h2>
             <div className="flex items-center gap-2 px-3 py-1 bg-green-500/10 text-green-400 rounded-full text-xs font-medium border border-green-500/20">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
@@ -111,7 +139,7 @@ function App() {
         </header>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-8">
+        <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
           <AnimatePresence mode="wait">
             {activeTab === 'dashboard' && (
               <motion.div 
@@ -122,7 +150,7 @@ function App() {
                 className="space-y-8"
               >
                 {/* Top Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="stat-cards-grid">
                   <StatCard title="Total Power" value={totalPower} detail="Real-time" icon={<Zap className="text-yellow-400" />} />
                   <StatCard title="Active Devices" value={activeCount} detail="Live status" icon={<Activity className="text-blue-400" />} />
                   <StatCard title="Total Alerts" value={totalAlerts} detail={totalAlerts ? "High priority" : "All clear"} icon={<AlertTriangle className={totalAlerts ? "text-red-400" : "text-zinc-500"} />} />
@@ -130,8 +158,8 @@ function App() {
                 </div>
 
                 {/* Sub-sections */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                   <div className="lg:col-span-2 space-y-8">
+                <div className="dashboard-main-grid">
+                   <div className="min-w-0 space-y-8">
                       <OfficeMap devices={apiData?.devices || []} />
                    </div>
                    <div className="space-y-6">
