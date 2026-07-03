@@ -1,63 +1,49 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const DB_PATH = path.join(__dirname, 'data', 'db.json');
-
 console.log('🚀 Starting Office Device Simulator...');
 
-// Helper to read DB
-function readDB() {
+async function runSimulatorTick() {
   try {
-    return JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'));
+    // 1. Fetch current status to see devices
+    const statusRes = await fetch('http://localhost:3001/api/status');
+    if (!statusRes.ok) {
+      throw new Error(`Failed to fetch status: ${statusRes.statusText}`);
+    }
+    
+    const data = await statusRes.json();
+    const devices = data.devices;
+    if (!devices || devices.length === 0) {
+      console.log('[Simulator] No devices found to simulate.');
+      return;
+    }
+
+    // 2. Pick a random device to toggle (approx 1 in 3 chance every 5s)
+    if (Math.random() > 0.6) {
+      const randomIndex = Math.floor(Math.random() * devices.length);
+      const device = devices[randomIndex];
+
+      // 3. Make POST request to toggle device
+      const toggleRes = await fetch('http://localhost:3001/api/devices/toggle', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          room: device.room,
+          name: device.name
+        })
+      });
+
+      if (toggleRes.ok) {
+        const toggleData = await toggleRes.json();
+        console.log(`[Simulator] Toggled ${device.name} in ${device.room} to ${toggleData.device.status ? 'ON' : 'OFF'}`);
+      } else {
+        console.error(`[Simulator] Failed to toggle ${device.name}: ${toggleRes.statusText}`);
+      }
+    }
   } catch (err) {
-    console.error('Error reading DB:', err);
-    return null;
+    console.error('[Simulator Error] Connection or server error:', err.message);
   }
 }
 
-// Helper to write DB
-function writeDB(data) {
-  try {
-    fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
-  } catch (err) {
-    console.error('Error writing DB:', err);
-  }
-}
-
-// Ensure the db.json is created properly before simulating
-setInterval(() => {
-  const db = readDB();
-  if (!db) return;
-
-  const devices = db.devices;
-  
-  // Pick a random device to toggle (approx 1 in 3 chance every 5s)
-  if (Math.random() > 0.6) {
-    const randomIndex = Math.floor(Math.random() * devices.length);
-    const device = devices[randomIndex];
-    
-    device.status = !device.status;
-    device.last_changed_at = new Date().toISOString();
-    
-    console.log(`[Simulator] Toggled ${device.name} in ${device.room} to ${device.status ? 'ON' : 'OFF'}`);
-  }
-
-  // Update power history
-  const currentTotalPower = devices.filter(d => d.status).reduce((sum, d) => sum + d.power_draw, 0);
-  
-  db.power_history.push({
-    timestamp: new Date().toISOString(),
-    power: currentTotalPower
-  });
-
-  // Keep history to last 30 data points
-  if (db.power_history.length > 30) {
-    db.power_history.shift();
-  }
-
-  writeDB(db);
-
-}, 5000); // Run every 5 seconds
+// Run every 5 seconds
+setInterval(runSimulatorTick, 5000);
+console.log('⏳ Simulator scheduler started (runs every 5 seconds)');
