@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 
-const OfficeMap = ({ devices = [] }) => {
+const OfficeMap = ({ devices = [], onToggleDevice }) => {
   // Helper to find device status
   const getDeviceStatus = (room, name) => {
     const d = devices.find(dev => dev.room === room && dev.name === name);
@@ -32,14 +32,21 @@ const OfficeMap = ({ devices = [] }) => {
         <DrawingRoom 
           x={74} y={44} w={roomW} h={roomH} 
           getStat={(name) => getDeviceStatus('Drawing Room', name)}
+          onToggle={(name) => onToggleDevice && onToggleDevice('Drawing Room', name)}
         />
         <WorkRoom 
           x={74 + roomW} y={44} w={roomW} h={roomH} name="Work Room 1"
+          lightNames={['Light 4', 'Light 5', 'Light 6']}
+          fanNames={['Fan 3', 'Fan 4']}
           getStat={(name) => getDeviceStatus('Work Room 1', name)}
+          onToggle={(name) => onToggleDevice && onToggleDevice('Work Room 1', name)}
         />
         <WorkRoom 
           x={74 + roomW * 2} y={44} w={roomW} h={roomH} name="Work Room 2"
+          lightNames={['Light 7', 'Light 8', 'Light 9']}
+          fanNames={['Fan 5', 'Fan 6']}
           getStat={(name) => getDeviceStatus('Work Room 2', name)}
+          onToggle={(name) => onToggleDevice && onToggleDevice('Work Room 2', name)}
         />
 
         {/* Outer Doors & Entry Arrow */}
@@ -60,11 +67,16 @@ const OfficeMap = ({ devices = [] }) => {
         <circle cx={910} cy={475} r="8" fill="#3b82f6" opacity="0.6" />
 
       </svg>
+      
+      {/* Help tooltip */}
+      <div className="absolute bottom-4 left-4 bg-zinc-950/80 border border-white/10 px-3 py-1.5 rounded-lg text-[10px] text-zinc-400 pointer-events-none">
+        💡 Click on any light or fan in the layout to toggle its power state.
+      </div>
     </div>
   );
 };
 
-const DrawingRoom = ({ x, y, w, h, getStat }) => (
+const DrawingRoom = ({ x, y, w, h, getStat, onToggle }) => (
   <g>
     {/* Floor */}
     <rect x={x} y={y} width={w} height={h} fill="#18181b" stroke="#52525b" strokeWidth="4" />
@@ -100,17 +112,17 @@ const DrawingRoom = ({ x, y, w, h, getStat }) => (
     <Plant x={x + w - 25} y={y + h - 25} size={20} />
 
     {/* Lights */}
-    <Light x={x + 70} y={y + 60} isOn={getStat('Light 1')} />
-    <Light x={x + w - 70} y={y + 60} isOn={getStat('Light 2')} />
-    <Light x={x + w/2} y={y + h - 50} isOn={getStat('Light 3')} />
+    <Light x={x + 70} y={y + 60} isOn={getStat('Light 1')} onClick={() => onToggle('Light 1')} />
+    <Light x={x + w - 70} y={y + 60} isOn={getStat('Light 2')} onClick={() => onToggle('Light 2')} />
+    <Light x={x + w/2} y={y + h - 50} isOn={getStat('Light 3')} onClick={() => onToggle('Light 3')} />
 
     {/* Fans */}
-    <Fan x={x + w/2 - 10} y={y + h/3 - 10} isOn={getStat('Fan 1')} />
-    <Fan x={x + w/2 - 10} y={y + h - 110} isOn={getStat('Fan 2')} />
+    <Fan x={x + w/2 - 10} y={y + h/3 - 10} isOn={getStat('Fan 1')} onClick={() => onToggle('Fan 1')} />
+    <Fan x={x + w/2 - 10} y={y + h - 110} isOn={getStat('Fan 2')} onClick={() => onToggle('Fan 2')} />
   </g>
 );
 
-const WorkRoom = ({ x, y, w, h, name, getStat }) => (
+const WorkRoom = ({ x, y, w, h, name, lightNames, fanNames, getStat, onToggle }) => (
   <g>
     {/* Floor */}
     <rect x={x} y={y} width={w} height={h} fill="#18181b" stroke="#52525b" strokeWidth="4" />
@@ -131,27 +143,25 @@ const WorkRoom = ({ x, y, w, h, name, getStat }) => (
     <Workstation x={x + w - 90} y={y + h - 120} flipped />
 
     {/* Lights */}
-    <Light x={x + 70} y={y + 60} isOn={getStat('Light 1')} />
-    <Light x={x + w - 70} y={y + 60} isOn={getStat('Light 2')} />
-    <Light x={x + w/2} y={y + h - 50} isOn={getStat('Light 3')} />
+    <Light x={x + 70} y={y + 60} isOn={getStat(lightNames[0])} onClick={() => onToggle(lightNames[0])} />
+    <Light x={x + w - 70} y={y + 60} isOn={getStat(lightNames[1])} onClick={() => onToggle(lightNames[1])} />
+    <Light x={x + w/2} y={y + h - 50} isOn={getStat(lightNames[2])} onClick={() => onToggle(lightNames[2])} />
 
     {/* Fans */}
-    <Fan x={x + w/2} y={y + 90} isOn={getStat('Fan 1')} />
-    <Fan x={x + w/2} y={y + h - 100} isOn={getStat('Fan 2')} />
+    <Fan x={x + w/2} y={y + 90} isOn={getStat(fanNames[0])} onClick={() => onToggle(fanNames[0])} />
+    <Fan x={x + w/2} y={y + h - 100} isOn={getStat(fanNames[1])} onClick={() => onToggle(fanNames[1])} />
   </g>
 );
 
 const Workstation = ({ x, y, flipped = false }) => {
-  const dir = flipped ? -1 : 1;
-  const cx = flipped ? x + 50 : x;
   return (
     <g>
       {/* Desk */}
       <rect x={x} y={y} width="50" height="40" fill="#27272a" rx="2" stroke="#3f3f46" />
       {/* Monitor */}
-      <rect x={flipped ? x + 35 : x + 5} y={y + 10} width="10" height="20" fill="#18181b" rx="1" />
+      <rect x={flipped ? x + 35 : x + 5} y={y + 10} width="10" height="20" fill="#18181b" rx={1} />
       {/* Keyboard */}
-      <rect x={flipped ? x + 25 : x + 18} y={y + 14} width="6" height="12" fill="#3f3f46" rx="1" />
+      <rect x={flipped ? x + 25 : x + 18} y={y + 14} width="6" height="12" fill="#3f3f46" rx={1} />
       {/* Chair */}
       <rect x={flipped ? x - 20 : x + 60} y={y + 10} width="15" height="20" fill="#3f3f46" rx="4" />
       <path d={`M${flipped ? x - 5 : x + 60} ${y + 12} L${flipped ? x - 5 : x + 60} ${y + 28}`} stroke="#52525b" strokeWidth="2" />
@@ -168,20 +178,21 @@ const Plant = ({ x, y, size }) => (
   </g>
 );
 
-const Light = ({ x, y, isOn }) => (
-  <g transform={`translate(${x}, ${y})`}>
+const Light = ({ x, y, isOn, onClick }) => (
+  <g transform={`translate(${x}, ${y})`} onClick={onClick} className="cursor-pointer group">
     <motion.circle 
       r="12" 
       fill={isOn ? "#fef08a" : "#3f3f46"} 
-      stroke={isOn ? "#fde047" : "#52525b"}
+      stroke={isOn ? "#eab308" : "#52525b"}
       strokeWidth="2"
+      whileHover={{ scale: 1.15 }}
       animate={{ 
         scale: isOn ? [1, 1.05, 1] : 1,
       }}
       transition={{ repeat: isOn ? Infinity : 0, duration: 3 }}
     />
     {isOn && (
-      <circle r="25" fill="url(#lightGradient)" />
+      <circle r="25" fill="url(#lightGradient)" pointerEvents="none" />
     )}
     <defs>
       <radialGradient id="lightGradient">
@@ -192,23 +203,23 @@ const Light = ({ x, y, isOn }) => (
   </g>
 );
 
-// 3-blade fan to match the PDF
-const Fan = ({ x, y, isOn }) => (
-  <g transform={`translate(${x}, ${y})`}>
+const Fan = ({ x, y, isOn, onClick }) => (
+  <g transform={`translate(${x}, ${y})`} onClick={onClick} className="cursor-pointer group">
     <motion.g 
       animate={{ rotate: isOn ? 360 : 0 }} 
       transition={{ repeat: isOn ? Infinity : 0, duration: 0.4, ease: "linear" }}
+      whileHover={{ scale: 1.15 }}
     >
-      <circle r="6" fill="#3f3f46" />
+      <circle r="6" fill="#3f3f46" stroke={isOn ? "#60a5fa" : "#52525b"} strokeWidth="1" />
       {/* Blade 1 */}
-      <path d="M 0,-5 Q 10,-35 0,-40 Q -10,-35 0,-5" fill="#27272a" stroke="#52525b" strokeWidth="1" />
+      <path d="M 0,-5 Q 10,-35 0,-40 Q -10,-35 0,-5" fill={isOn ? "#60a5fa" : "#27272a"} stroke="#52525b" strokeWidth="1" opacity={isOn ? 0.9 : 1} />
       {/* Blade 2 */}
       <g transform="rotate(120)">
-        <path d="M 0,-5 Q 10,-35 0,-40 Q -10,-35 0,-5" fill="#27272a" stroke="#52525b" strokeWidth="1" />
+        <path d="M 0,-5 Q 10,-35 0,-40 Q -10,-35 0,-5" fill={isOn ? "#60a5fa" : "#27272a"} stroke="#52525b" strokeWidth="1" opacity={isOn ? 0.9 : 1} />
       </g>
       {/* Blade 3 */}
       <g transform="rotate(240)">
-        <path d="M 0,-5 Q 10,-35 0,-40 Q -10,-35 0,-5" fill="#27272a" stroke="#52525b" strokeWidth="1" />
+        <path d="M 0,-5 Q 10,-35 0,-40 Q -10,-35 0,-5" fill={isOn ? "#60a5fa" : "#27272a"} stroke="#52525b" strokeWidth="1" opacity={isOn ? 0.9 : 1} />
       </g>
     </motion.g>
   </g>
