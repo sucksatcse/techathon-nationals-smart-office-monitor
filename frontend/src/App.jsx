@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Layout, Zap, AlertTriangle, Monitor, Settings, Activity, Home, MessageSquare, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficeMap from './components/OfficeMap';
+import Analytics from './components/Analytics';
 
 const rooms = ['Drawing Room', 'Work Room 1', 'Work Room 2'];
 
@@ -200,6 +201,17 @@ function App() {
                 <div className="w-full max-w-6xl">
                   <OfficeMap devices={apiData?.devices || []} />
                 </div>
+              </motion.div>
+            )}
+
+            {activeTab === 'analytics' && (
+              <motion.div 
+                key="analytics"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+              >
+                <Analytics />
               </motion.div>
             )}
           </AnimatePresence>
