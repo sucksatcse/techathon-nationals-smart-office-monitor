@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Zap, AlertTriangle, Monitor, Settings, Activity, Home, BarChart3, Menu, X } from 'lucide-react';
+import { Layout, Zap, AlertTriangle, Monitor, Settings, Activity, Home, MessageSquare, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficeMap from './components/OfficeMap';
 
@@ -84,10 +84,10 @@ function App() {
             onClick={() => { setActiveTab('layout'); setSidebarOpen(false); }} 
           />
           <NavItem 
-            icon={<BarChart3 size={20} />} 
-            label="Energy Usage" 
-            active={activeTab === 'energy'} 
-            onClick={() => { setActiveTab('energy'); setSidebarOpen(false); }} 
+            icon={<MessageSquare size={20} />} 
+            label="Discord Bot" 
+            active={activeTab === 'bot'} 
+            onClick={() => { setActiveTab('bot'); setSidebarOpen(false); }} 
           />
           <NavItem 
             icon={<AlertTriangle size={20} />} 
