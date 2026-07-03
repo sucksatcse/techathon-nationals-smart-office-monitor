@@ -136,10 +136,11 @@ export default function Analytics() {
         let runningKwh = 0;
         newHistory.forEach((pt, index) => {
           // Assume each interval step adds a small fractional energy based on power draw
-          runningKwh += parseFloat(((pt.totalPower * (2 / 60)) / 1000).toFixed(4));
+          // 2 seconds = 2 / 3600 of an hour
+          runningKwh += parseFloat(((pt.totalPower * (2 / 3600)) / 1000).toFixed(6));
           growth.push({
             time: pt.time,
-            kwh: parseFloat(runningKwh.toFixed(3))
+            kwh: parseFloat(runningKwh.toFixed(4))
           });
         });
         setKwhGrowthData(growth);
@@ -160,10 +161,10 @@ export default function Analytics() {
     // Initial fetch on mount
     fetchData(true);
 
-    // Update every 2 minutes (120,000 milliseconds)
+    // Update every 2 seconds (2,000 milliseconds)
     const interval = setInterval(() => {
       fetchData(false);
-    }, 120000);
+    }, 2000);
 
     return () => clearInterval(interval);
   }, []);
@@ -240,7 +241,7 @@ export default function Analytics() {
         <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 mb-6">
           <div>
             <h3 className="text-lg font-semibold">Live Total Power Consumption</h3>
-            <p className="text-xs text-zinc-400">Aggregated wattage draw tracked over time (updated every 2m)</p>
+            <p className="text-xs text-zinc-400">Aggregated wattage draw tracked over time (updated every 2s)</p>
           </div>
           <div className="flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary border border-primary/20 rounded-full text-xs font-medium">
             <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
