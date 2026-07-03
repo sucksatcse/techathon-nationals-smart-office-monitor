@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Zap, AlertTriangle, Monitor, Settings, Activity, Home, MessageSquare, Menu, X, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Layout, Zap, AlertTriangle, Monitor, Settings, Activity, Home, MessageSquare, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficeMap from './components/OfficeMap';
 import Analytics from './components/Analytics';
-import AlertsPage from './components/AlertsPage';
 
-const roomsList = ['Drawing Room', 'Work Room 1', 'Work Room 2'];
+const rooms = ['Drawing Room', 'Work Room 1', 'Work Room 2'];
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -18,74 +17,27 @@ function App() {
     return () => clearInterval(timer);
   }, []);
 
-  const fetchStatus = async () => {
-    try {
-      const res = await fetch('http://localhost:3001/api/status');
-      const data = await res.json();
-      setApiData(data);
-    } catch (err) {
-      console.error('Failed to fetch status:', err);
-    }
-  };
-
   useEffect(() => {
+    // Poll the backend every 2.5 seconds
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch('http://localhost:3001/api/status');
+        const data = await res.json();
+        setApiData(data);
+      } catch (err) {
+        console.error('Failed to fetch status:', err);
+      }
+    };
+    
     fetchStatus();
     const pollTimer = setInterval(fetchStatus, 2500);
     return () => clearInterval(pollTimer);
   }, []);
 
-  const handleToggleDevice = async (room, name) => {
-    try {
-      const res = await fetch('http://localhost:3001/api/devices/toggle', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ room, name })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success) {
-          // Optimistically update local state immediately
-          setApiData(prev => {
-            if (!prev) return prev;
-            const updatedDevices = prev.devices.map(d => 
-              d.room === room && d.name === name ? { ...d, status: data.device.status, last_changed_at: data.device.last_changed_at } : d
-            );
-            
-            // Re-calculate room counts and power draw
-            const updatedRooms = prev.rooms.map(r => {
-              if (r.name === room) {
-                const roomDevices = updatedDevices.filter(d => d.room === room);
-                return {
-                  ...r,
-                  active_count: roomDevices.filter(d => d.status).length,
-                  power_usage: roomDevices.filter(d => d.status).reduce((s, d) => s + d.power_draw, 0)
-                };
-              }
-              return r;
-            });
-            
-            const totalPower = updatedDevices.filter(d => d.status).reduce((s, d) => s + d.power_draw, 0);
-            
-            return {
-              ...prev,
-              devices: updatedDevices,
-              rooms: updatedRooms,
-              total_power: totalPower,
-              active_count: updatedDevices.filter(d => d.status).length
-            };
-          });
-        }
-      }
-    } catch (err) {
-      console.error('Failed to toggle device:', err);
-    }
-  };
-
-  const totalPower = apiData ? `${apiData.total_power}W` : '0W';
-  const activeCount = apiData ? `${apiData.active_count} / ${apiData.total_count}` : '0 / 15';
+  const totalPower = apiData ? `${apiData.total_power}W` : '420W';
+  const activeCount = apiData ? `${apiData.active_count} / ${apiData.total_count}` : '9 / 15';
   const totalAlerts = apiData && apiData.alerts ? apiData.alerts.length : 0;
+
 
   return (
     <div className="flex h-screen w-full bg-background text-zinc-100 font-sans overflow-hidden">
@@ -133,11 +85,17 @@ function App() {
             onClick={() => { setActiveTab('layout'); setSidebarOpen(false); }} 
           />
           <NavItem 
+            icon={<MessageSquare size={20} />} 
+            label="Discord Bot" 
+            active={activeTab === 'bot'} 
+            onClick={() => { setActiveTab('bot'); setSidebarOpen(false); }} 
+          />
+          <NavItem 
             icon={<AlertTriangle size={20} />} 
             label="Alerts" 
             active={activeTab === 'alerts'} 
             onClick={() => { setActiveTab('alerts'); setSidebarOpen(false); }} 
-            badge={totalAlerts}
+            badge={2}
           />
           <NavItem 
             icon={<Activity size={20} />} 
@@ -194,65 +152,37 @@ function App() {
               >
                 {/* Top Stats */}
                 <div className="stat-cards-grid">
-                  <StatCard title="Total Power" value={totalPower} detail="Real-time draw" icon={<Zap className="text-yellow-400" />} />
+                  <StatCard title="Total Power" value={totalPower} detail="Real-time" icon={<Zap className="text-yellow-400" />} />
                   <StatCard title="Active Devices" value={activeCount} detail="Live status" icon={<Activity className="text-blue-400" />} />
-                  <StatCard title="Active Alerts" value={totalAlerts} detail={totalAlerts ? "Anomalies detected" : "All clear"} icon={<AlertTriangle className={totalAlerts ? "text-red-400 animate-bounce" : "text-zinc-500"} />} />
+                  <StatCard title="Total Alerts" value={totalAlerts} detail={totalAlerts ? "High priority" : "All clear"} icon={<AlertTriangle className={totalAlerts ? "text-red-400" : "text-zinc-500"} />} />
                   <StatCard title="Estimated Daily" value={apiData ? `${parseFloat(((apiData.total_power * 8) / 1000).toFixed(2))} kWh` : '0 kWh'} detail="Based on current usage" icon={<Zap className="text-green-400" />} />
                 </div>
 
                 {/* Sub-sections */}
                 <div className="dashboard-main-grid">
-                   <div className="min-w-0 space-y-8 lg:col-span-2">
-                      <OfficeMap devices={apiData?.devices || []} onToggleDevice={handleToggleDevice} />
+                   <div className="min-w-0 space-y-8">
+                      <OfficeMap devices={apiData?.devices || []} />
                    </div>
-                   
-                   {/* Live Device Status Panel */}
                    <div className="space-y-6">
-                      <div className="dashboard-card border border-white/5 bg-zinc-950/40 p-5 rounded-2xl">
-                        <h3 className="font-bold text-base mb-1 text-zinc-100">Live Device Status Panel</h3>
-                        <p className="text-xs text-zinc-400 mb-6">Real-time status of all 15 active devices.</p>
-                        
-                        <div className="space-y-6">
-                          {roomsList.map(roomName => {
-                            const roomDevices = apiData?.devices.filter(d => d.room === roomName) || [];
-                            const roomPower = roomDevices.filter(d => d.status).reduce((s, d) => s + d.power_draw, 0);
-                            
-                            return (
-                              <div key={roomName} className="space-y-3">
-                                <div className="flex justify-between items-center border-b border-white/5 pb-2">
-                                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">{roomName}</span>
-                                  <span className="text-[11px] text-zinc-500 font-medium">{roomPower}W draw</span>
-                                </div>
-                                <div className="space-y-2">
-                                  {roomDevices.length > 0 ? roomDevices.map(device => (
-                                    <div 
-                                      key={device.name} 
-                                      className="flex items-center justify-between p-2.5 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors"
-                                    >
-                                      <div className="flex items-center gap-2">
-                                        <span className={`w-2 h-2 rounded-full ${device.status ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : 'bg-zinc-600'}`} />
-                                        <span className="text-sm font-semibold text-zinc-200">{device.name}</span>
-                                        <span className="text-[10px] text-zinc-500">({device.power_draw}W)</span>
-                                      </div>
-                                      
-                                      <button 
-                                        onClick={() => handleToggleDevice(roomName, device.name)}
-                                        className="text-zinc-400 hover:text-zinc-100 transition-colors focus:outline-none"
-                                      >
-                                        {device.status ? (
-                                          <ToggleRight className="w-8 h-8 text-green-500 transition-all" />
-                                        ) : (
-                                          <ToggleLeft className="w-8 h-8 text-zinc-600 transition-all" />
-                                        )}
-                                      </button>
-                                    </div>
-                                  )) : (
-                                    <div className="text-xs text-zinc-500 italic py-1">Loading devices...</div>
-                                  )}
-                                </div>
+                      <div className="dashboard-card">
+                        <h3 className="font-semibold mb-4">Quick Room Status</h3>
+                        <div className="space-y-4">
+                          {apiData ? apiData.rooms.map(room => (
+                            <div key={room.name} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5">
+                              <div>
+                                <span className="block font-medium">{room.name}</span>
+                                <span className="text-xs text-zinc-400">{room.active_count} active &middot; {room.power_usage}W</span>
                               </div>
-                            );
-                          })}
+                              <span className={`text-xs font-medium ${room.active_count === room.total_count ? 'text-red-400' : 'text-primary'}`}>
+                                {room.active_count === room.total_count ? 'All ON' : 'Normal'}
+                              </span>
+                            </div>
+                          )) : rooms.map(room => (
+                            <div key={room} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5">
+                              <span>{room}</span>
+                              <span className="text-xs text-zinc-500 font-medium">Loading...</span>
+                            </div>
+                          ))}
                         </div>
                       </div>
                    </div>
@@ -269,19 +199,8 @@ function App() {
                 className="flex items-center justify-center h-full w-full"
               >
                 <div className="w-full max-w-6xl">
-                  <OfficeMap devices={apiData?.devices || []} onToggleDevice={handleToggleDevice} />
+                  <OfficeMap devices={apiData?.devices || []} />
                 </div>
-              </motion.div>
-            )}
-
-            {activeTab === 'alerts' && (
-              <motion.div 
-                key="alerts"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-              >
-                <AlertsPage />
               </motion.div>
             )}
 
@@ -314,8 +233,8 @@ function NavItem({ icon, label, active, onClick, badge }) {
     >
       <span className={`${active ? 'text-primary' : 'text-zinc-500 group-hover:text-zinc-300'}`}>{icon}</span>
       <span className="font-medium flex-1 text-left">{label}</span>
-      {badge > 0 && (
-        <span className="bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-bold animate-pulse">
+      {badge && (
+        <span className="bg-red-500 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full">
           {badge}
         </span>
       )}
