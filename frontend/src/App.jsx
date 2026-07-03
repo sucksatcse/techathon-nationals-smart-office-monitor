@@ -204,6 +204,53 @@ function App() {
                 <div className="dashboard-main-grid">
                    <div className="min-w-0 space-y-8 lg:col-span-2">
                       <OfficeMap devices={apiData?.devices || []} onToggleDevice={handleToggleDevice} />
+
+                      {/* Live Power Consumption Meter */}
+                      <div className="dashboard-card border border-white/5 bg-zinc-950/40 p-6 rounded-2xl">
+                        <div className="flex justify-between items-center mb-6">
+                          <div>
+                            <h3 className="font-bold text-base text-zinc-100">Live Power Consumption Meter</h3>
+                            <p className="text-xs text-zinc-400">Total and per-room real-time electricity draw breakdown.</p>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-3xl font-extrabold text-yellow-400">{totalPower}</span>
+                            <span className="text-xs text-zinc-500 block">Total Active Load</span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                          {roomsList.map((roomName, idx) => {
+                            const roomDevices = apiData?.devices.filter(d => d.room === roomName) || [];
+                            const roomPower = roomDevices.filter(d => d.status).reduce((s, d) => s + d.power_draw, 0);
+                            const maxPossiblePower = roomDevices.reduce((s, d) => s + d.power_draw, 0) || 1;
+                            const percentage = Math.round((roomPower / maxPossiblePower) * 100);
+
+                            const colorClass = idx === 0 ? 'bg-blue-500' : idx === 1 ? 'bg-amber-500' : 'bg-emerald-500';
+                            const textClass = idx === 0 ? 'text-blue-400' : idx === 1 ? 'text-amber-400' : 'text-emerald-400';
+
+                            return (
+                              <div key={roomName} className="bg-white/5 border border-white/5 rounded-xl p-4 flex flex-col justify-between">
+                                <div className="flex justify-between items-start mb-3">
+                                  <span className="text-xs font-bold text-zinc-300 uppercase tracking-wider">{roomName}</span>
+                                  <span className={`text-sm font-extrabold ${textClass}`}>{roomPower}W</span>
+                                </div>
+                                <div className="space-y-1.5">
+                                  <div className="w-full bg-zinc-800 h-2 rounded-full overflow-hidden">
+                                    <div
+                                      className={`h-full ${colorClass} transition-all duration-500`}
+                                      style={{ width: `${percentage}%` }}
+                                    />
+                                  </div>
+                                  <div className="flex justify-between text-[10px] text-zinc-500 font-medium">
+                                    <span>{roomDevices.filter(d => d.status).length} / {roomDevices.length} devices ON</span>
+                                    <span>{percentage}% capacity</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
                    </div>
                    
                    {/* Live Device Status Panel */}

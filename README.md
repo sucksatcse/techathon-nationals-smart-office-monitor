@@ -1,11 +1,11 @@
 # 🏢 Smart Office Monitor: Modern Operations Center
 
-[![Laravel 11](https://img.shields.io/badge/Backend-Laravel%2011-FF2D20?style=for-the-badge&logo=laravel)](https://laravel.com)
-[![React 18](https://img.shields.io/badge/Frontend-React%2018-61DAFB?style=for-the-badge&logo=react)](https://react.dev)
+[![Node.js Express](https://img.shields.io/badge/Backend-Node.js%20Express-339933?style=for-the-badge&logo=node.js)](https://expressjs.com)
+[![React 19](https://img.shields.io/badge/Frontend-React%2019-61DAFB?style=for-the-badge&logo=react)](https://react.dev)
 [![Tailwind CSS](https://img.shields.io/badge/Styling-Tailwind%20CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com)
 [![Discord.js](https://img.shields.io/badge/Bot-Discord.js-5865F2?style=for-the-badge&logo=discord)](https://discord.js.org)
 
-> A premium, real-time IoT monitoring solution for modern offices. Built for the Techathon National Finals, this system bridges the gap between simulated device data, a high-aesthetic dashboard, and a conversational Discord AI.
+> A premium, real-time IoT monitoring solution for modern offices. This system bridges the gap between simulated device data, a high-aesthetic dashboard with interactive control, and a conversational Discord bot.
 
 ---
 
@@ -13,104 +13,79 @@
 
 ### 🖥️ Interactive Dashboard
 - **Top-Down Office Visualization**: An SVG-powered interactive floor plan with dynamic assets.
-- **Micro-Animations**: Fans rotate when active; lights feature a realistic radial-gradient glow.
-- **Live Energy Metering**: Real-time wattage breakdown for Drawing Room, Work Room 1, and Work Room 2.
-- **Smart Alerts**: Automatic detection of devices left on after office hours (9 AM - 5 PM).
+- **Clickable Device Map**: Click on any light or fan in the visual map to toggle its power state!
+- **Micro-Animations**: Fans rotate when active and have a realistic wobbling effect; lights glow when ON.
+- **Live Energy Metering**: Real-time per-room power consumption meter showing total and individual room loads.
+- **Smart Alerts**: Automatic detection of devices left on after office hours (9 AM - 5 PM) or left on for >2 hours.
 
 ### 🤖 Intelligent Discord Bot
-- **Conversational Queries**: Ask `@OfficeBot` about usage patterns in natural language.
-- **Rich Embeds**: Visual status reports for every room with detailed icons.
-- **Proactive Notifications**: Automatic alerts pushed to discord when anomalies are detected.
-
-### ⚡ Technical Excellence
-- **Real-Time Engine**: Powered by **Laravel Reverb** (WebSockets) for sub-second synchronization.
-- **Simulation Layer**: Realistic device state toggling and power fluctuation simulation.
-- **Clean Architecture**: Decoupled Frontend, Backend, and Bot layers sharing a single source of truth.
-
----
-
-## 🛠️ Tech Stack
-
-- **Frontend**: React 18, Vite, Tailwind CSS, Framer Motion, Lucide Icons, Recharts.
-- **Backend**: Laravel 11, PHP 8.2+, SQLite (local) / MySQL (prod).
-- **Real-time**: Laravel Reverb, Laravel Echo.
-- **Bot**: Node.js, Discord.js, Axios, OpenAI/Gemini (LLM Mode).
+- **Real-Time Data Queries**: Ask `@OfficeBot` about usage patterns and get live answers.
+- **Rich Embeds**: Visual status reports for every room with detailed status emojis.
+- **Proactive Notifications**: Automatic alerts pushed to Discord text channels when anomalies are detected.
 
 ---
 
 ## 🏗️ System Architecture
 
-```mermaid
-graph TD
-    subgraph Data Layer
-        Sim[Office Simulator] --> DB[(Database)]
-    end
-    
-    subgraph Backend
-        DB --> API[Laravel API]
-        API --> Rev[Laravel Reverb WebSockets]
-    end
-    
-    subgraph Clients
-        Rev --> Dashboard[React Dashboard]
-        API --> Bot[Discord Bot]
-        Dashboard --> User((Office Manager))
-        Bot --> User
-    end
-```
+Our system uses a single source of truth (`db.json` database layer) with the following data flow:
+
+![System Architecture Diagram](docs/system_diagram.png)
 
 ---
 
-## 📸 Visual Walkthrough
+## ⚡ Hardware/Electrical Schematic
 
-### Interactive Dashboard
-![Dashboard Mockup](https://raw.githubusercontent.com/sucksatcse/techathon-nationals-smart-office-monitor/main/docs/dashboard.png)
+A representative circuit schematic for a single office room showing how the ESP32 microcontroller interfaces with relays to control and monitor the status of lights and fans:
 
-### Discord Bot Interaction
-![Bot Mockup](https://raw.githubusercontent.com/sucksatcse/techathon-nationals-smart-office-monitor/main/docs/bot.png)
-
-## 🎥 Video Demo
-[Watch the full walkthrough here](https://your-video-link.com) (Max 3 minutes)
+![Hardware Schematic](docs/hardware_schematic.png)
 
 ---
 
 ## ⚙️ Installation & Setup
 
 ### 1. Prerequisites
-- PHP 8.2+ & Composer
-- Node.js 20+ & npm
-- A Discord Bot Token
+- Node.js 20+ and npm
+- A Discord Bot Token (Create one at the [Discord Developer Portal](https://discord.com/developers/applications))
 
-### 2. Backend Setup
+### 2. Backend & Simulator Setup
+The backend runs both the API server (Port 3001) and the device status simulator concurrently.
+
 ```bash
 cd backend
-composer install
-cp .env.example .env
-php artisan key:generate
-php artisan migrate --seed
-php artisan serve
+npm install
+npm start
 ```
 
-### 3. Frontend Setup
+### 3. Frontend Dashboard Setup
+The React/Vite development server runs on Port 5173.
+
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
 
+### 4. Discord Bot Setup
+Create a `.env` file in the `bot` folder using `.env.example` as a template, then start the bot:
+
+```bash
+cd bot
+npm install
+# Create bot/.env with your DISCORD_TOKEN
+npm start
+```
+
 ---
 
-## 📈 Roadmap & Status
-- [x] UI/UX Design & SVG Map
-- [x] Backend Scaffolding & API
-- [ ] Real-time Simulation & Reverb
-- [ ] Discord Bot LLM Integration
-- [ ] Final Deployment
+## 🤖 Discord Bot Commands
 
----
-
-## 📄 License
-This project was developed for the **Techathon National Finals**. All rights reserved.
+| Command | Action |
+|---|---|
+| `!status` | Get a friendly conversational overview of all room device statuses. |
+| `!room <name>` | Get the status of a specific room (e.g., `!room drawing` or `!room work1`). |
+| `!usage` | View total office power draw breakdown by room and daily kWh estimate. |
+| `!alerts` | View currently active security or power usage anomalies. |
+| `!help` | List all available bot commands. |
 
 ---
 

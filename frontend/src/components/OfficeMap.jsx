@@ -203,26 +203,98 @@ const Light = ({ x, y, isOn, onClick }) => (
   </g>
 );
 
-const Fan = ({ x, y, isOn, onClick }) => (
-  <g transform={`translate(${x}, ${y})`} onClick={onClick} className="cursor-pointer group">
-    <motion.g 
-      animate={{ rotate: isOn ? 360 : 0 }} 
-      transition={{ repeat: isOn ? Infinity : 0, duration: 0.4, ease: "linear" }}
-      whileHover={{ scale: 1.15 }}
-    >
-      <circle r="6" fill="#3f3f46" stroke={isOn ? "#60a5fa" : "#52525b"} strokeWidth="1" />
-      {/* Blade 1 */}
-      <path d="M 0,-5 Q 10,-35 0,-40 Q -10,-35 0,-5" fill={isOn ? "#60a5fa" : "#27272a"} stroke="#52525b" strokeWidth="1" opacity={isOn ? 0.9 : 1} />
-      {/* Blade 2 */}
-      <g transform="rotate(120)">
-        <path d="M 0,-5 Q 10,-35 0,-40 Q -10,-35 0,-5" fill={isOn ? "#60a5fa" : "#27272a"} stroke="#52525b" strokeWidth="1" opacity={isOn ? 0.9 : 1} />
-      </g>
-      {/* Blade 3 */}
-      <g transform="rotate(240)">
-        <path d="M 0,-5 Q 10,-35 0,-40 Q -10,-35 0,-5" fill={isOn ? "#60a5fa" : "#27272a"} stroke="#52525b" strokeWidth="1" opacity={isOn ? 0.9 : 1} />
-      </g>
-    </motion.g>
-  </g>
-);
+const Fan = ({ x, y, isOn, onClick }) => {
+  // Ceiling mount point (fixed anchor)
+  const mountY = -30;
+  // Rod length from mount to blade hub
+  const rodLen = 22;
+  // Hub center (where blades spin around)
+  const hubY = mountY + rodLen;
+
+  return (
+    <g transform={`translate(${x}, ${y})`} onClick={onClick} className="cursor-pointer group">
+
+      {/* Fixed ceiling bracket */}
+      <rect x="-5" y={mountY - 5} width="10" height="6" rx="2"
+        fill="#52525b" stroke="#71717a" strokeWidth="0.5" />
+
+      {/* Rod connecting mount to hub — wobbles with the fan */}
+      <motion.g
+        style={{ transformOrigin: `0px ${mountY}px` }}
+        animate={isOn ? {
+          rotate: [0, 1.8, -2.2, 1.4, -1.6, 2, -1, 0],
+        } : { rotate: 0 }}
+        transition={isOn ? {
+          repeat: Infinity,
+          duration: 0.75,
+          ease: "easeInOut",
+          times: [0, 0.15, 0.3, 0.45, 0.6, 0.72, 0.87, 1],
+        } : { duration: 0.4 }}
+      >
+        {/* Rod */}
+        <line
+          x1="0" y1={mountY}
+          x2="0" y2={hubY}
+          stroke="#71717a" strokeWidth="2"
+        />
+
+        {/* Hub circle */}
+        <circle cx="0" cy={hubY} r="5"
+          fill="#27272a"
+          stroke={isOn ? "#60a5fa" : "#52525b"}
+          strokeWidth="1.5"
+        />
+
+        {/* Spinning blades — rotate around hub center */}
+        <motion.g
+          style={{ transformOrigin: `0px ${hubY}px` }}
+          animate={{ rotate: isOn ? 360 : 0 }}
+          transition={{
+            repeat: isOn ? Infinity : 0,
+            duration: 0.35,
+            ease: "linear",
+          }}
+        >
+          {/* Blade 1 */}
+          <path
+            d={`M 0,${hubY - 4} Q 11,${hubY - 30} 0,${hubY - 38} Q -11,${hubY - 30} 0,${hubY - 4}`}
+            fill={isOn ? "#60a5fa" : "#27272a"}
+            stroke="#52525b" strokeWidth="1"
+            opacity={isOn ? 0.92 : 1}
+          />
+          {/* Blade 2 */}
+          <g style={{ transformOrigin: `0px ${hubY}px` }} transform={`rotate(120, 0, ${hubY})`}>
+            <path
+              d={`M 0,${hubY - 4} Q 11,${hubY - 30} 0,${hubY - 38} Q -11,${hubY - 30} 0,${hubY - 4}`}
+              fill={isOn ? "#60a5fa" : "#27272a"}
+              stroke="#52525b" strokeWidth="1"
+              opacity={isOn ? 0.92 : 1}
+            />
+          </g>
+          {/* Blade 3 */}
+          <g style={{ transformOrigin: `0px ${hubY}px` }} transform={`rotate(240, 0, ${hubY})`}>
+            <path
+              d={`M 0,${hubY - 4} Q 11,${hubY - 30} 0,${hubY - 38} Q -11,${hubY - 30} 0,${hubY - 4}`}
+              fill={isOn ? "#60a5fa" : "#27272a"}
+              stroke="#52525b" strokeWidth="1"
+              opacity={isOn ? 0.92 : 1}
+            />
+          </g>
+        </motion.g>
+
+        {/* Hover ring */}
+        <motion.circle
+          cx="0" cy={hubY} r="20"
+          fill="transparent"
+          stroke={isOn ? "#60a5fa" : "#52525b"}
+          strokeWidth="0.5"
+          strokeDasharray="3 3"
+          opacity="0"
+          whileHover={{ opacity: 0.5 }}
+        />
+      </motion.g>
+    </g>
+  );
+};
 
 export default OfficeMap;
