@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #0a0a0b;
+  --color-sidebar: #111113;
+  --color-card: #18181b;
+  --color-primary: #3b82f6;
+  --color-accent: #f59e0b;
+}
+
+
+:root {
+  background-color: #0a0a0b;
+  color: #e4e4e7;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+body {
+  margin: 0;
+  display: flex;
+  min-height: 100vh;
+}
+
+@layer components {
+  .dashboard-card {
+    background-color: var(--color-card);
+    @apply border border-white/5 rounded-xl p-6 shadow-xl;
+  }
+}
+
+/* Animations for fans */
+@keyframes fan-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-fan {
+  animation: fan-spin 0.5s linear infinite;
+}
+
+/* Glow effect for lights */
+.bulb-glow {
+  filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.6));
+}
