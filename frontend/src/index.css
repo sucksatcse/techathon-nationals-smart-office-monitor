@@ -9,11 +9,62 @@
 }
 
 
+
+/* ═══════════════════════════════════════════════════
+   THEME TOKENS  (applied via [data-theme] on <html>)
+   ═══════════════════════════════════════════════════ */
+
+/* ── Dark mode (default) ── */
+:root,
+[data-theme="dark"] {
+  --so-bg:           #0a0a0b;
+  --so-sidebar:      #111113;
+  --so-card:         #18181b;
+  --so-border:       rgba(255,255,255,0.05);
+  --so-text:         #e4e4e7;
+  --so-text-muted:   #71717a;
+  --so-input-bg:     rgba(39,39,42,0.6);
+  --so-hover:        rgba(255,255,255,0.05);
+  --so-chart-grid:   rgba(255,255,255,0.06);
+  --so-chart-text:   #71717a;
+  background-color: var(--so-bg);
+  color: var(--so-text);
+  color-scheme: dark;
+}
+
+/* ── Light mode ── */
+[data-theme="light"] {
+  --so-bg:           #f3f4f6;
+  --so-sidebar:      #ffffff;
+  --so-card:         #ffffff;
+  --so-border:       rgba(0,0,0,0.07);
+  --so-text:         #111827;
+  --so-text-muted:   #6b7280;
+  --so-input-bg:     rgba(243,244,246,0.8);
+  --so-hover:        rgba(0,0,0,0.04);
+  --so-chart-grid:   rgba(0,0,0,0.06);
+  --so-chart-text:   #6b7280;
+  background-color: var(--so-bg);
+  color: var(--so-text);
+  color-scheme: light;
+}
+
+/* ── Global smooth theme transition ── */
+*,
+*::before,
+*::after {
+  transition:
+    background-color 0.3s ease,
+    border-color     0.3s ease,
+    color            0.3s ease,
+    box-shadow       0.3s ease;
+}
+
+/* ── Base ── */
 :root {
-  background-color: #0a0a0b;
-  color: #e4e4e7;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
 }
+
 
 body {
   margin: 0;
@@ -70,3 +121,103 @@ body {
 .bulb-glow {
   filter: drop-shadow(0 0 8px rgba(245, 158, 11, 0.6));
 }
+
+/* ═══════════════════════════════════════════════════
+   LIGHT MODE STRUCTURAL OVERRIDES
+   Target Tailwind utility backgrounds with [data-theme]
+   ═══════════════════════════════════════════════════ */
+
+/* App root background */
+[data-theme="light"] .bg-background,
+[data-theme="light"] .bg-background\/50 {
+  background-color: var(--so-bg) !important;
+}
+
+/* Sidebar */
+[data-theme="light"] .bg-sidebar {
+  background-color: var(--so-sidebar) !important;
+}
+
+/* Cards */
+[data-theme="light"] .dashboard-card {
+  background-color: var(--so-card) !important;
+  border-color: var(--so-border) !important;
+  color: var(--so-text) !important;
+}
+
+/* Inline gradient stat cards */
+[data-theme="light"] .bg-gradient-to-br.from-card {
+  background: linear-gradient(to bottom right, #ffffff, #f9fafb) !important;
+}
+
+/* Generic zinc dark backgrounds used in panels */
+[data-theme="light"] .bg-zinc-900,
+[data-theme="light"] .bg-zinc-800,
+[data-theme="light"] .bg-zinc-800\/80 {
+  background-color: #f1f5f9 !important;
+}
+
+[data-theme="light"] .bg-zinc-900\/30,
+[data-theme="light"] .bg-zinc-950\/40 {
+  background-color: rgba(241,245,249,0.6) !important;
+}
+
+/* Borders */
+[data-theme="light"] .border-white\/5,
+[data-theme="light"] .border-white\/10,
+[data-theme="light"] .border-white\/15 {
+  border-color: var(--so-border) !important;
+}
+
+/* Text colours */
+[data-theme="light"] .text-zinc-100,
+[data-theme="light"] .text-zinc-200 {
+  color: #111827 !important;
+}
+
+[data-theme="light"] .text-zinc-400,
+[data-theme="light"] .text-zinc-500 {
+  color: #6b7280 !important;
+}
+
+[data-theme="light"] .text-zinc-600 {
+  color: #9ca3af !important;
+}
+
+/* Input fields */
+[data-theme="light"] .bg-zinc-800\/60 {
+  background-color: rgba(229,231,235,0.7) !important;
+}
+
+/* Hover utilities */
+[data-theme="light"] .hover\:bg-white\/5:hover {
+  background-color: rgba(0,0,0,0.04) !important;
+}
+
+/* White/5 used as subtle bg on rows */
+[data-theme="light"] .bg-white\/5 {
+  background-color: rgba(0,0,0,0.03) !important;
+}
+
+/* Header backdrop */
+[data-theme="light"] header {
+  background-color: rgba(255,255,255,0.8) !important;
+  border-color: rgba(0,0,0,0.07) !important;
+}
+
+/* Chart containers – let recharts text inherit the CSS var */
+[data-theme="light"] .recharts-cartesian-axis-tick text,
+[data-theme="light"] .recharts-legend-item-text {
+  fill: var(--so-chart-text) !important;
+  color: var(--so-chart-text) !important;
+}
+
+[data-theme="light"] .recharts-cartesian-grid line {
+  stroke: var(--so-chart-grid) !important;
+}
+
+/* Chat panel dark backgrounds */
+[data-theme="light"] .shadow-2xl {
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.15) !important;
+}
+

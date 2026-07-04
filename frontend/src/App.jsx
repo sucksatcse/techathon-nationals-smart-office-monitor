@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Zap, AlertTriangle, Monitor, Settings, Activity, Home, Menu, X } from 'lucide-react';
+import { Layout, Zap, AlertTriangle, Monitor, Settings, Activity, Home, Menu, X, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficeMap from './components/OfficeMap';
 import Analytics from './components/Analytics';
 import AlertsPage from './components/AlertsPage';
 import FloatingChat from './components/FloatingChat';
+import { useTheme } from './context/ThemeContext.jsx';
 
 const rooms = ['Drawing Room', 'Work Room 1', 'Work Room 2'];
 
 function App() {
+  const { theme, toggleTheme } = useTheme();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -125,11 +127,25 @@ function App() {
             </div>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-3 lg:gap-4">
             <div className="text-right">
               <p className="text-sm font-medium">{currentTime.toLocaleTimeString()}</p>
               <p className="text-[10px] text-zinc-500">{currentTime.toLocaleDateString()}</p>
             </div>
+
+            {/* ── Theme Toggle ── */}
+            <button
+              id="theme-toggle"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="w-10 h-10 rounded-full flex items-center justify-center border border-white/10 hover:bg-white/5 transition-all duration-200 hover:scale-110 active:scale-95"
+              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            >
+              {theme === 'dark'
+                ? <Sun  className="w-4 h-4 text-amber-400" />
+                : <Moon className="w-4 h-4 text-indigo-400" />}
+            </button>
+
             <div className="w-10 h-10 rounded-full bg-zinc-800 border border-white/10 flex items-center justify-center">
               <Zap className="w-5 h-5 text-accent" />
             </div>
