@@ -1,8 +1,10 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,70 +13,202 @@ const app = express();
 const PORT = 3001;
 const DB_PATH = path.join(__dirname, 'data', 'db.json');
 
+// Discord Webhook URL — set DISCORD_WEBHOOK_URL in backend/.env to enable proactive alerts
+const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL || null;
+
 app.use(cors());
 app.use(express.json());
 
-// Helper: read DB
+// ─────────────────────────────────────────────────────────────────────────────
+// DB Helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
 function readDB() {
-  return JSON.parse(fs.readFileSync(DB_PATH, 'utf-8'));
+  const raw = fs.readFileSync(DB_PATH, 'utf-8');
+  const db = JSON.parse(raw);
+  // Ensure alerts array exists
+  if (!db.alerts) db.alerts = [];
+  return db;
 }
 
-// Helper: compute alerts
-function computeAlerts(devices) {
-  const alerts = [];
-  const now = new Date();
-  const hour = now.getHours();
-  const isAfterHours = hour >= 17 || hour < 9;
+function writeDB(data) {
+  fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
+}
 
-  // Group by room
+// ─────────────────────────────────────────────────────────────────────────────
+// Discord Webhook Helper
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function sendDiscordAlert(message) {
+  if (!DISCORD_WEBHOOK_URL) {
+    console.log(`[Alert Simulation] Proactive alert generated: "${message}"`);
+    console.log(`[Alert Simulation] Tip: Set DISCORD_WEBHOOK_URL in .env to send this to a real channel.`);
+    return;
+  }
+  try {
+    await fetch(DISCORD_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: message }),
+    });
+    console.log(`[Discord] Sent alert: ${message}`);
+  } catch (err) {
+    console.error('[Discord] Failed to send webhook:', err.message);
+  }
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Build a human-friendly Discord message for an alert
+// ─────────────────────────────────────────────────────────────────────────────
+
+function buildDiscordMessage(alert, devices) {
+  const roomDevices = devices.filter(d => d.room === alert.room && d.status);
+  const fans   = roomDevices.filter(d => d.type === 'fan').length;
+  const lights = roomDevices.filter(d => d.type === 'light').length;
+  const hour   = new Date(alert.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+  if (alert.type === 'after_hours') {
+    const parts = [];
+    if (fans > 0)   parts.push(`${fans} fan${fans > 1 ? 's' : ''}`);
+    if (lights > 0) parts.push(`${lights} light${lights > 1 ? 's' : ''}`);
+    const deviceStr = parts.length ? parts.join(' and ') : `${roomDevices.length} device(s)`;
+    return `⚠️ Hey! **${alert.room}** still has ${deviceStr} ON and it's ${hour}. Did someone forget to leave?`;
+  }
+
+  if (alert.type === 'all_on_2h') {
+    return `⏱️ Heads up! All devices in **${alert.room}** have been running continuously for over 2 hours. Consider turning some off!`;
+  }
+
+  return `⚠️ Alert in **${alert.room}**: ${alert.message}`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Stateful Alert Engine — runs every 5 seconds
+// Persists alerts to db.json, de-duplicates by ID, timestamps on first trigger
+// ─────────────────────────────────────────────────────────────────────────────
+
+function runAlertEngine() {
+  let db;
+  try {
+    db = readDB();
+  } catch (err) {
+    console.error('[AlertEngine] Could not read DB:', err.message);
+    return;
+  }
+
+  const devices  = db.devices;
+  const now      = new Date();
+  const hour     = now.getHours();
+  const isAfterHours = hour >= 16 || hour < 8; // Office Hours: 8 AM - 4 PM
+
+  // Collect alert IDs that are UNRESOLVED (used to de-duplicate and fire Discord webhook once)
+  const existingIds = new Set(db.alerts.filter(a => !a.resolved).map(a => a.id));
+  const newAlerts   = [];
+
+  // --- Group devices by room ---
   const rooms = [...new Set(devices.map(d => d.room))];
+
   for (const room of rooms) {
     const roomDevices = devices.filter(d => d.room === room);
-    const onDevices = roomDevices.filter(d => d.status);
+    const onDevices   = roomDevices.filter(d => d.status);
 
-    // Alert: devices on after hours
+    // ── Alert type 1: Devices ON after office hours (9 AM – 5 PM) ──────────
+    const afterHoursId = `after-hours-${room}`;
+    const lastTimeSent = db.alerts
+      .filter(a => a.id === afterHoursId)
+      .sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp))[0]?.timestamp;
+    
+    const minutesSinceLast = lastTimeSent ? (now - new Date(lastTimeSent)) / 60000 : 999;
+
     if (isAfterHours && onDevices.length > 0) {
-      alerts.push({
-        id: `after-hours-${room}`,
-        type: 'after_hours',
-        room,
-        message: `${room}: ${onDevices.length} device(s) ON after office hours`,
-        severity: 'high',
-        timestamp: now.toISOString(),
-      });
-    }
-
-    // Alert: all devices in a room on for more than 2h
-    if (onDevices.length === 5) {
-      const oldest = onDevices
-        .map(d => new Date(d.last_changed_at))
-        .sort((a, b) => a - b)[0];
-      const hoursOn = (now - oldest) / 3600000;
-      if (hoursOn >= 2) {
-        alerts.push({
-          id: `all-on-${room}`,
-          type: 'all_on',
+      // Only send if no unresolved alert exists AND we haven't sent one in the last 15 mins
+      if (!existingIds.has(afterHoursId) && minutesSinceLast > 15) {
+        const alert = {
+          id: afterHoursId,
+          type: 'after_hours',
           room,
-          message: `${room}: All devices have been ON for over 2 hours`,
-          severity: 'medium',
+          message: `${onDevices.length} device(s) left ON outside office hours (9 AM–5 PM). Current time: ${now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}.`,
+          severity: 'high',
           timestamp: now.toISOString(),
-        });
+          resolved: false,
+          acknowledged: false,
+        };
+        db.alerts.push(alert);
+        newAlerts.push(alert);
+        existingIds.add(afterHoursId);
+      }
+    } else {
+      // Office hours restored — mark old after-hours alert as resolved
+      const idx = db.alerts.findIndex(a => a.id === afterHoursId && !a.resolved);
+      if (idx !== -1) {
+        db.alerts[idx].resolved = true;
+        db.alerts[idx].resolved_at = now.toISOString();
       }
     }
+
+    // ── Alert type 2: ALL devices in a room ON for ≥ 2 hours continuously ──
+    if (onDevices.length === roomDevices.length && roomDevices.length > 0) {
+      const allOnId = `all-on-2h-${room}`;
+      // Find the LATEST (most recent) 'ON' transition time across ALL devices in the room.
+      // If the most recent device was turned on 2 hours ago, then ALL have been on for at least 2 hours.
+      const latestOnTimeAcrossAll = Math.max(...onDevices.map(d => new Date(d.last_changed_at).getTime()));
+      const hoursAllOn = (now.getTime() - latestOnTimeAcrossAll) / 3_600_000;
+
+      if (hoursAllOn >= 2 && !existingIds.has(allOnId)) {
+        const alert = {
+          id: allOnId,
+          type: 'all_on_2h',
+          room,
+          message: `All devices in this room have been running continuously for over 2 hours. Consider turning some off to save power.`,
+          severity: 'medium',
+          timestamp: now.toISOString(),
+          resolved: false,
+          acknowledged: false,
+        };
+        db.alerts.push(alert);
+        newAlerts.push(alert);
+        existingIds.add(allOnId);
+      }
+    } else {
+      // If some devices were turned off, resolve the alert
+      const allOnId = `all-on-2h-${room}`;
+      const idx = db.alerts.findIndex(a => a.id === allOnId && !a.resolved);
+      if (idx !== -1) {
+        db.alerts[idx].resolved = true;
+        db.alerts[idx].resolved_at = now.toISOString();
+      }
+    }
+
   }
-  return alerts;
+
+  // Persist updated DB
+  try {
+    writeDB(db);
+  } catch (err) {
+    console.error('[AlertEngine] Could not write DB:', err.message);
+    return;
+  }
+
+  // Fire Discord webhook for each new alert (async, non-blocking)
+  for (const alert of newAlerts) {
+    const msg = buildDiscordMessage(alert, devices);
+    sendDiscordAlert(msg);
+    console.log(`[AlertEngine] New alert: [${alert.severity.toUpperCase()}] ${alert.room} — ${alert.type}`);
+  }
 }
 
-// GET /api/status — full office state
-app.get('/api/status', (req, res) => {
-  const db = readDB();
-  const devices = db.devices;
+// Run the alert engine every 5 seconds
+setInterval(runAlertEngine, 5000);
+// Also run once immediately on startup
+setTimeout(runAlertEngine, 1000);
 
-  const totalPower = devices
-    .filter(d => d.status)
-    .reduce((sum, d) => sum + d.power_draw, 0);
+// ─────────────────────────────────────────────────────────────────────────────
+// Room summary helper (used by chat + status endpoints)
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const rooms = [...new Set(devices.map(d => d.room))].map(room => {
+function getRoomSummaries(devices) {
+  return [...new Set(devices.map(d => d.room))].map(room => {
     const roomDevices = devices.filter(d => d.room === room);
     return {
       name: room,
@@ -84,19 +218,68 @@ app.get('/api/status', (req, res) => {
       power_usage: roomDevices.filter(d => d.status).reduce((s, d) => s + d.power_draw, 0),
     };
   });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/status — full office state
+// ─────────────────────────────────────────────────────────────────────────────
+app.get('/api/status', (req, res) => {
+  const db = readDB();
+  const devices = db.devices;
+
+  const totalPower = devices
+    .filter(d => d.status)
+    .reduce((sum, d) => sum + d.power_draw, 0);
+
+  const activeAlerts = db.alerts.filter(a => !a.resolved && !a.acknowledged);
 
   res.json({
     devices,
-    rooms,
+    rooms: getRoomSummaries(devices),
     total_power: totalPower,
     active_count: devices.filter(d => d.status).length,
     total_count: devices.length,
-    alerts: computeAlerts(devices),
+    alerts: activeAlerts,
     timestamp: new Date().toISOString(),
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/alerts — all alerts (active + history)
+// ─────────────────────────────────────────────────────────────────────────────
+app.get('/api/alerts', (req, res) => {
+  const db = readDB();
+  // Return newest first
+  const sorted = [...db.alerts].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  res.json(sorted);
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/alerts/:id/acknowledge — acknowledge an alert
+// ─────────────────────────────────────────────────────────────────────────────
+app.post('/api/alerts/:id/acknowledge', (req, res) => {
+  const db = readDB();
+  const alert = db.alerts.find(a => a.id === req.params.id);
+  if (!alert) return res.status(404).json({ error: 'Alert not found' });
+  alert.acknowledged     = true;
+  alert.acknowledged_at  = new Date().toISOString();
+  writeDB(db);
+  res.json({ success: true, alert });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/alerts/clear — clear all alert history
+// ─────────────────────────────────────────────────────────────────────────────
+app.post('/api/alerts/clear', (req, res) => {
+  const db = readDB();
+  db.alerts = [];
+  writeDB(db);
+  res.json({ success: true });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // GET /api/room/:name — specific room status
+// ─────────────────────────────────────────────────────────────────────────────
 app.get('/api/room/:name', (req, res) => {
   const db = readDB();
   const nameMap = {
@@ -119,13 +302,13 @@ app.get('/api/room/:name', (req, res) => {
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
 // GET /api/usage — power consumption stats
+// ─────────────────────────────────────────────────────────────────────────────
 app.get('/api/usage', (req, res) => {
   const db = readDB();
   const devices = db.devices;
   const totalPower = devices.filter(d => d.status).reduce((s, d) => s + d.power_draw, 0);
-
-  // Estimate today's usage: average uptime * wattage / 1000
   const estimatedKwh = parseFloat((totalPower * 8 / 1000).toFixed(2));
 
   const rooms = [...new Set(devices.map(d => d.room))].map(room => ({
@@ -142,14 +325,16 @@ app.get('/api/usage', (req, res) => {
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
 // GET /api/devices — list all devices (for bot)
+// ─────────────────────────────────────────────────────────────────────────────
 app.get('/api/devices', (req, res) => {
   const db = readDB();
   res.json(db.devices);
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /api/chat  — Natural-language chat interface (same data as Discord Bot)
+// POST /api/chat — Natural language chat interface
 // ─────────────────────────────────────────────────────────────────────────────
 app.post('/api/chat', (req, res) => {
   const raw = (req.body.message || '').toLowerCase().trim();
@@ -162,33 +347,33 @@ app.post('/api/chat', (req, res) => {
     return res.json({ reply: "Sorry, I couldn't retrieve the latest office information. Please try again in a moment. 🙏" });
   }
 
-  const devices  = db.devices;
-  const alerts   = computeAlerts(devices);
-  const totalPower = devices.filter(d => d.status).reduce((s, d) => s + d.power_draw, 0);
-  const estimatedKwh = parseFloat((totalPower * 8 / 1000).toFixed(2));
+  const devices       = db.devices;
+  const alerts        = db.alerts.filter(a => !a.resolved && !a.acknowledged);
+  const totalPower    = devices.filter(d => d.status).reduce((s, d) => s + d.power_draw, 0);
+  const estimatedKwh  = parseFloat((totalPower * 8 / 1000).toFixed(2));
   const activeDevices = devices.filter(d => d.status);
-  const allRooms = [...new Set(devices.map(d => d.room))];
+  const allRooms      = [...new Set(devices.map(d => d.room))];
 
   const roomSummary = (roomName) => {
     const rd = devices.filter(d => d.room === roomName);
-    const fans   = rd.filter(d => d.type === 'fan'   && d.status).length;
-    const lights = rd.filter(d => d.type === 'light' && d.status).length;
+    const fans        = rd.filter(d => d.type === 'fan'   && d.status).length;
+    const lights      = rd.filter(d => d.type === 'light' && d.status).length;
     const totalFans   = rd.filter(d => d.type === 'fan').length;
     const totalLights = rd.filter(d => d.type === 'light').length;
-    const power  = rd.filter(d => d.status).reduce((s, d) => s + d.power_draw, 0);
-    const active = rd.filter(d => d.status).length;
+    const power       = rd.filter(d => d.status).reduce((s, d) => s + d.power_draw, 0);
+    const active      = rd.filter(d => d.status).length;
     const lines = [];
     lines.push(`**${roomName}**`);
     lines.push(`• Fans: ${fans}/${totalFans} ON`);
     lines.push(`• Lights: ${lights}/${totalLights} ON`);
     lines.push(`• Power: ${power}W`);
-    if (active === 0) lines.push('• Status: All devices OFF 😴');
+    if (active === 0)           lines.push('• Status: All devices OFF 😴');
     else if (active === rd.length) lines.push('• Status: All devices ON ⚡');
-    else lines.push(`• Status: ${active}/${rd.length} devices ON`);
+    else                        lines.push(`• Status: ${active}/${rd.length} devices ON`);
     return lines.join('\n');
   };
 
-  // ── Intent: specific room ──────────────────────────────────────────────────
+  // ── Intent: specific room ─────────────────────────────────────────────────
   const roomAliases = {
     'Drawing Room': ['drawing room', 'drawing', 'draw'],
     'Work Room 1':  ['work room 1', 'work1', 'workroom1', 'work 1', 'room 1'],
@@ -202,20 +387,20 @@ app.post('/api/chat', (req, res) => {
     }
   }
 
-  // ── Intent: fans ──────────────────────────────────────────────────────────
+  // ── Intent: fans ─────────────────────────────────────────────────────────
   if (/fan/.test(raw)) {
     const onFans  = activeDevices.filter(d => d.type === 'fan');
     const allFans = devices.filter(d => d.type === 'fan');
     const lines = [`🌀 **Fan Status** (${onFans.length}/${allFans.length} ON)\n`];
     for (const room of allRooms) {
-      const roomFans    = allFans.filter(d => d.room === room);
-      const roomFansOn  = roomFans.filter(d => d.status).length;
+      const roomFans   = allFans.filter(d => d.room === room);
+      const roomFansOn = roomFans.filter(d => d.status).length;
       lines.push(`• ${room}: ${roomFansOn}/${roomFans.length} fans ON`);
     }
     return res.json({ reply: lines.join('\n') });
   }
 
-  // ── Intent: lights ────────────────────────────────────────────────────────
+  // ── Intent: lights ───────────────────────────────────────────────────────
   if (/light/.test(raw)) {
     const onLights  = activeDevices.filter(d => d.type === 'light');
     const allLights = devices.filter(d => d.type === 'light');
@@ -228,7 +413,7 @@ app.post('/api/chat', (req, res) => {
     return res.json({ reply: lines.join('\n') });
   }
 
-  // ── Intent: active / running devices ──────────────────────────────────────
+  // ── Intent: active / running devices ─────────────────────────────────────
   if (/active device|running device|devices (on|running|currently)|how many.*on/.test(raw)) {
     const lines = [`📟 **Active Devices** (${activeDevices.length}/${devices.length} total)\n`];
     for (const room of allRooms) {
@@ -238,7 +423,7 @@ app.post('/api/chat', (req, res) => {
     return res.json({ reply: lines.join('\n') });
   }
 
-  // ── Intent: alerts / warnings ─────────────────────────────────────────────
+  // ── Intent: alerts / warnings ────────────────────────────────────────────
   if (/alert|warn|anomal/.test(raw)) {
     if (!alerts.length) {
       return res.json({ reply: '✅ **All Clear!**\n\nNo active alerts at the moment. Every device is operating within normal parameters. 🟢' });
@@ -246,7 +431,8 @@ app.post('/api/chat', (req, res) => {
     const lines = [`🚨 **Active Alerts** (${alerts.length})\n`];
     alerts.forEach(a => {
       const sev = a.severity === 'high' ? '🔴' : '🟡';
-      lines.push(`${sev} [${a.severity.toUpperCase()}] ${a.message}`);
+      const time = new Date(a.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      lines.push(`${sev} [${a.severity.toUpperCase()}] **${a.room}** at ${time}: ${a.message}`);
     });
     return res.json({ reply: lines.join('\n') });
   }
@@ -328,4 +514,10 @@ app.listen(PORT, () => {
   console.log(`📊 Status:  http://localhost:${PORT}/api/status`);
   console.log(`⚡ Usage:   http://localhost:${PORT}/api/usage`);
   console.log(`💬 Chat:    http://localhost:${PORT}/api/chat`);
+  console.log(`🚨 Alerts:  http://localhost:${PORT}/api/alerts`);
+  if (DISCORD_WEBHOOK_URL) {
+    console.log(`🤖 Discord: Webhook configured — proactive alerts enabled`);
+  } else {
+    console.log(`🤖 Discord: No webhook URL set — set DISCORD_WEBHOOK_URL in .env to enable proactive alerts`);
+  }
 });

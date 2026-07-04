@@ -89,12 +89,12 @@ function App() {
             onClick={() => { setActiveTab('layout'); setSidebarOpen(false); }}
           />
 
-          <NavItem
-            icon={<AlertTriangle size={20} />}
-            label="Alerts"
-            active={activeTab === 'alerts'}
-            onClick={() => { setActiveTab('alerts'); setSidebarOpen(false); }}
-            badge={2}
+          <NavItem 
+            icon={<AlertTriangle size={20} />} 
+            label="Alerts" 
+            active={activeTab === 'alerts'} 
+            onClick={() => { setActiveTab('alerts'); setSidebarOpen(false); }} 
+            badge={totalAlerts > 0 ? totalAlerts : null}
           />
           <NavItem
             icon={<Activity size={20} />}
@@ -104,9 +104,7 @@ function App() {
           />
         </nav>
 
-        <div className="p-6 border-t border-white/5">
-          <NavItem icon={<Settings size={20} />} label="Settings" />
-        </div>
+
       </aside>
 
       {/* Main Content */}

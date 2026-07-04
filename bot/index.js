@@ -6,21 +6,26 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
-  ]
+    GatewayIntentBits.MessageContent,
+  ],
 });
 
 const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001/api';
 
+// Cache for sent alerts to avoid spamming the channel (if using polling method)
+const sentAlertIds = new Set();
+
 client.once('ready', () => {
   console.log(`🤖 Bot is online as ${client.user.tag}`);
   
-  // Start polling alerts every 15 seconds for proactive warnings
+  // Note: Backend now pushes proactive alerts via webhooks, 
+  // but we'll include the poller as a fallback for the bot channel.
   setInterval(pollAlerts, 15000);
 });
 
-// Cache for sent alerts to avoid spamming the channel
-const sentAlertIds = new Set();
+// ─────────────────────────────────────────────────────────────────────────────
+// Proactive Alert Polling (Fallback for Bot Interaction)
+// ─────────────────────────────────────────────────────────────────────────────
 
 async function findAlertsChannel(client) {
   if (process.env.DISCORD_ALERTS_CHANNEL_ID) {
@@ -32,7 +37,6 @@ async function findAlertsChannel(client) {
     }
   }
 
-  // Fallback: search client guilds for #alerts or #general text channel
   for (const guild of client.guilds.cache.values()) {
     const channel = guild.channels.cache.find(c => 
       c.type === 0 && (c.name.toLowerCase() === 'alerts' || c.name.toLowerCase() === 'general')
@@ -61,17 +65,11 @@ async function pollAlerts() {
         let emoji = alert.severity === 'high' ? '🚨' : '⚠️';
         let messageText = `${emoji} **Alert Triggered!**\n${alert.message}`;
 
-        if (alert.type === 'after_hours') {
-          messageText = `${emoji} **After-Hours Device Warning!**\nHey team, it looks like **${alert.deviceName}** in the **${alert.room}** is still running. Since it's past office hours, did someone forget to switch it off? Let's save some energy! 🔌`;
-        } else if (alert.type === 'all_on') {
-          messageText = `${emoji} **Energy Waste Alert!**\nHeads up! All devices in the **${alert.room}** have been left ON for over 2 hours. Can someone verify if they're still needed? 😮`;
-        }
-
         await channel.send(messageText);
       }
     }
 
-    // Clear resolved alerts from the sent list so they can trigger again
+    // Clear resolved alerts from the cache
     for (const id of sentAlertIds) {
       if (!activeIds.has(id)) {
         sentAlertIds.delete(id);
@@ -82,139 +80,197 @@ async function pollAlerts() {
   }
 }
 
-client.on('messageCreate', async (message) => {
-  if (message.author.bot) return;
-  if (!message.content.startsWith('!')) return;
+// ─────────────────────────────────────────────────────────────────────────────
+// Message Handler Helper (shared between Discord and Mock Mode)
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const args = message.content.slice(1).trim().split(/ +/);
+async function handleCommand(content, authorName, replyFn) {
+  if (!content.startsWith('!')) return;
+
+  const args    = content.slice(1).trim().split(/ +/);
   const command = args.shift().toLowerCase();
 
   try {
-    if (command === 'help') {
-      const embed = new EmbedBuilder()
-        .setTitle('🤖 Smart Office Bot commands')
-        .setColor('#3b82f6')
-        .setDescription('Here are the available commands to check on the office:')
-        .addFields(
-          { name: '`!status`', value: 'Check device statuses for all rooms.' },
-          { name: '`!room <name>`', value: 'Check status for a specific room (e.g. `!room work1`).' },
-          { name: '`!usage`', value: 'Show current power load and estimated daily consumption.' },
-          { name: '`!alerts`', value: 'View any active office security/power anomalies.' }
-        )
-        .setFooter({ text: 'Smart Office Monitor' });
-
-      return message.reply({ embeds: [embed] });
-    }
-
+    // ─── !status ──────────────────────────────────────────────────────────
     if (command === 'status') {
-      const res = await axios.get(`${BACKEND_URL}/status`);
-      const { rooms, total_power, active_count, total_count } = res.data;
+      const { data } = await axios.get(`${BACKEND_URL}/status`);
 
-      let roomDescriptions = rooms.map(r => {
-        const lightsOn = r.devices.filter(d => d.type === 'light' && d.status).length;
-        const fansOn = r.devices.filter(d => d.type === 'fan' && d.status).length;
+      const fields = data.rooms.map(room => {
+        const fans   = room.devices.filter(d => d.type === 'fan'   && d.status).map(d => d.name);
+        const lights = room.devices.filter(d => d.type === 'light' && d.status).map(d => d.name);
+        const offAll = room.active_count === 0;
 
-        if (lightsOn === 0 && fansOn === 0) {
-          return `• **${r.name}**: All devices are currently turned off. 😴`;
-        }
-        
-        const lightText = lightsOn > 0 ? `${lightsOn} light${lightsOn > 1 ? 's' : ''}` : '';
-        const fanText = fansOn > 0 ? `${fansOn} fan${fansOn > 1 ? 's' : ''}` : '';
-        const parts = [lightText, fanText].filter(Boolean);
-        
-        return `• **${r.name}**: ${parts.join(' and ')} ON (${r.power_usage}W draw).`;
-      }).join('\n');
+        let value = offAll
+          ? '😴 All devices OFF'
+          : [
+              fans.length   ? `🌀 Fans ON: ${fans.join(', ')}`     : `🌀 Fans: all OFF`,
+              lights.length ? `💡 Lights ON: ${lights.join(', ')}` : `💡 Lights: all OFF`,
+              `⚡ ${room.power_usage}W`,
+            ].join('\n');
 
-      const embed = new EmbedBuilder()
-        .setTitle('🏢 Office Device Status')
-        .setColor('#10b981')
-        .setDescription(`Hello Boss! Here's the live status of our office devices:\n\n${roomDescriptions}\n\nTotal load right now is **${total_power}W** across **${active_count}/${total_count}** running devices.`)
-        .setTimestamp()
-        .setFooter({ text: 'Smart Office Monitor' });
+        return { name: room.name, value };
+      });
 
-      return message.reply({ embeds: [embed] });
-    }
-
-    if (command === 'room') {
-      const roomArg = args.join(' ').toLowerCase();
-      if (!roomArg) {
-        return message.reply('Please specify a room name, e.g., `!room drawing` or `!room work1`.');
-      }
-
-      const nameMap = {
-        'drawing': 'drawing',
-        'drawing room': 'drawing',
-        'work1': 'work1',
-        'work 1': 'work1',
-        'work room 1': 'work1',
-        'work2': 'work2',
-        'work 2': 'work2',
-        'work room 2': 'work2'
+      const response = {
+        title: '🏢 Smart Office — Live Status',
+        color: data.alerts.length > 0 ? '#ef4444' : '#10b981',
+        fields: [
+          ...fields,
+          { name: 'Summary', value: `⚡ **Total Power:** ${data.total_power}W  |  📟 **Devices:** ${data.active_count}/${data.total_count} ON` }
+        ]
       };
 
-      const mappedRoom = nameMap[roomArg];
-      if (!mappedRoom) {
-        return message.reply(`Sorry, I couldn't find a room matching "${roomArg}". Please try \`drawing\`, \`work1\`, or \`work2\`.`);
+      if (data.alerts.length > 0) {
+        response.fields.push({
+          name: `🚨 Active Alerts (${data.alerts.length})`,
+          value: data.alerts.map(a => `• ${a.room}: ${a.message}`).join('\n').slice(0, 1024),
+        });
       }
 
-      const res = await axios.get(`${BACKEND_URL}/room/${mappedRoom}`);
-      const { room, devices, active_count, power_usage } = res.data;
-
-      const deviceList = devices.map(d => 
-        ` ${d.status ? '🟢' : '🔴'} **${d.name}**: ${d.status ? 'ON' : 'OFF'} (${d.power_draw}W)`
-      ).join('\n');
-
-      const embed = new EmbedBuilder()
-        .setTitle(`🚪 Room Report: ${room}`)
-        .setColor('#3b82f6')
-        .setDescription(`Here is the individual status breakdown for **${room}**:\n\n${deviceList}\n\nCurrently, **${active_count}** devices are ON drawing **${power_usage}W** in total.`)
-        .setTimestamp();
-
-      return message.reply({ embeds: [embed] });
+      return replyFn(response);
     }
 
+    // ─── !room ────────────────────────────────────────────────────────────
+    if (command === 'room') {
+      const roomArg = args.join(' ').toLowerCase();
+      if (!roomArg) return replyFn('Please specify a room name, e.g., `!room drawing` or `!room work1`.');
+
+      const nameMap = {
+        'drawing': 'drawing', 'work1': 'work1', 'work2': 'work2',
+        'drawing room': 'drawing', 'work room 1': 'work1', 'work room 2': 'work2'
+      };
+
+      const mappedRoom = nameMap[roomArg] || roomArg;
+      try {
+        const { data } = await axios.get(`${BACKEND_URL}/room/${mappedRoom}`);
+        const deviceList = data.devices.map(d => 
+          ` ${d.status ? '🟢' : '🔴'} **${d.name}**: ${d.status ? 'ON' : 'OFF'} (${d.power_draw}W)`
+        ).join('\n');
+
+        return replyFn({
+          title: `🚪 Room Report: ${data.room}`,
+          description: `Individual status breakdown:\n\n${deviceList}\n\nCurrently, **${data.active_count}** devices are ON drawing **${data.power_usage}W**.`,
+          color: '#3b82f6'
+        });
+      } catch (e) {
+        return replyFn(`Sorry, I couldn't find a room matching "${roomArg}". Try \`drawing\`, \`work1\`, or \`work2\`.`);
+      }
+    }
+
+    // ─── !usage ───────────────────────────────────────────────────────────
     if (command === 'usage') {
-      const res = await axios.get(`${BACKEND_URL}/usage`);
-      const { current_watts, estimated_kwh_today, rooms } = res.data;
-
-      const breakdown = rooms.map(r => `• **${r.name}**: ${r.power}W`).join('\n');
-
-      const embed = new EmbedBuilder()
-        .setTitle('⚡ Electricity Usage Report')
-        .setColor('#f59e0b')
-        .setDescription(`Here's our current electrical load:\n\n• **Total Power Draw**: **${current_watts}W**\n• **Today's Estimated Energy**: **${estimated_kwh_today} kWh**\n\n**Room Breakdown**:\n${breakdown}`)
-        .setTimestamp()
-        .setFooter({ text: 'Smart Office Monitor' });
-
-      return message.reply({ embeds: [embed] });
+      const { data } = await axios.get(`${BACKEND_URL}/usage`);
+      return replyFn({
+        title: '⚡ Power Consumption',
+        description: `**Current Load:** ${data.current_watts}W\n**Estimated Today:** ${data.estimated_kwh_today} kWh`,
+        color: '#f59e0b',
+        fields: data.rooms.map(r => ({ name: r.name, value: `${r.power}W` }))
+      });
     }
 
+    // ─── !alerts ──────────────────────────────────────────────────────────
     if (command === 'alerts') {
-      const res = await axios.get(`${BACKEND_URL}/status`);
-      const { alerts } = res.data;
+      const { data: alerts } = await axios.get(`${BACKEND_URL}/alerts`);
+      const activeAlerts = alerts.filter(a => !a.resolved && !a.acknowledged);
 
-      if (!alerts || alerts.length === 0) {
-        return message.reply('🎉 **All clear!** No active device anomalies detected in the office right now.');
+      if (activeAlerts.length === 0) {
+        return replyFn({
+          title: '✅ All Clear!',
+          description: 'No active alerts. Every device is operating within normal parameters.'
+        });
       }
 
-      const alertList = alerts.map(a => {
-        const emoji = a.severity === 'high' ? '🚨' : '⚠️';
-        return `${emoji} **[${a.severity.toUpperCase()}]** ${a.message} (triggered <t:${Math.floor(new Date(a.timestamp).getTime() / 1000)}:R>)`;
-      }).join('\n');
+      return replyFn({
+        title: `🚨 Active Alerts (${activeAlerts.length})`,
+        color: '#ef4444',
+        fields: activeAlerts.map(a => ({
+          name: `${a.severity === 'high' ? '🔴' : '🟡'} ${a.room}`,
+          value: `${a.message}`
+        }))
+      });
+    }
 
-      const embed = new EmbedBuilder()
-        .setTitle('⚠️ Active Office Alerts')
-        .setColor('#ef4444')
-        .setDescription(`Here are the active anomalies currently detected:\n\n${alertList}`)
-        .setTimestamp();
-
-      return message.reply({ embeds: [embed] });
+    // ─── !help ────────────────────────────────────────────────────────────
+    if (command === 'help') {
+      return replyFn({
+        title: '🤖 Smart Office Bot — Commands',
+        fields: [
+          { name: '`!status`',  value: 'Full office status' },
+          { name: '`!room <n>`', value: 'Specific room report' },
+          { name: '`!usage`',   value: 'Power consumption' },
+          { name: '`!alerts`',  value: 'Active alerts' },
+          { name: '`!help`',    value: 'Show this menu' },
+        ]
+      });
     }
 
   } catch (error) {
-    console.error('[Bot Command Error]:', error.message);
-    message.reply('❌ Oops! I ran into an error trying to connect to the office server. Please make sure the backend is online.');
+    console.error('[Bot Error]', error.message);
+    replyFn('❌ Error: Could not fetch data from the Smart Office API.');
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Bot Initialization
+// ─────────────────────────────────────────────────────────────────────────────
+
+client.on('messageCreate', async (message) => {
+  if (message.author.bot) return;
+  
+  const discordReply = (content) => {
+    if (typeof content === 'string') return message.reply(content);
+    
+    const embed = new EmbedBuilder()
+      .setTitle(content.title)
+      .setColor(content.color || '#6366f1')
+      .setDescription(content.description || null)
+      .setTimestamp();
+    
+    if (content.fields) embed.addFields(...content.fields.map(f => ({ ...f, inline: f.inline !== false })));
+    
+    return message.reply({ embeds: [embed] });
+  };
+
+  await handleCommand(message.content, message.author.username, discordReply);
 });
 
-client.login(process.env.DISCORD_TOKEN);
+// ─────────────────────────────────────────────────────────────────────────────
+// Startup Logic
+// ─────────────────────────────────────────────────────────────────────────────
+
+const token = process.env.DISCORD_TOKEN;
+
+if (!token || token === 'your_token_here' || token.length < 50) {
+  console.log('⚠️  No valid DISCORD_TOKEN found in .env');
+  console.log('🚀 Starting in **MOCK MODE** (Terminal Simulator)...');
+  console.log('👉 Type commands directly here (e.g., !status, !help)\n');
+
+  process.stdin.setEncoding('utf8');
+  process.stdin.on('data', async (data) => {
+    const input = data.trim();
+    if (!input) return;
+
+    const mockReply = (content) => {
+      console.log('\n--- [MOCK BOT REPLY] ---');
+      if (typeof content === 'string') {
+        console.log(content);
+      } else {
+        console.log(`TITLE: ${content.title}`);
+        if (content.description) console.log(`DESC:  ${content.description}`);
+        if (content.fields) {
+          content.fields.forEach(f => console.log(`FIELD [${f.name}]: ${f.value}`));
+        }
+      }
+      console.log('------------------------\n');
+    };
+
+    await handleCommand(input, 'TerminalUser', mockReply);
+  });
+} else {
+  client.login(token).catch(err => {
+    console.error('❌ Failed to login to Discord:', err.message);
+    console.log('💡 Starting Mock Mode as fallback...');
+    // Fallback logic here if desired, but we'll stick to process exit for now per current structure
+    process.exit(1);
+  });
+}
