@@ -95,11 +95,9 @@ npm start
 
 **Institution:** Ahsanullah University of Science and Technology
 
-| Role | Name | Contact |
-|---|---|---|
-| Team Leader | Tanjim Islam Turja | tanjimturjaturja@gmail.com · 01968708966 |
-| Member | Enid Hasan | — |
-| Member | Shuvrato Bhattacharjje | — |
-| Member | MD. Tanjim Islam | — |
-
-Alternative contact: 01777844618
+| Role | Name |
+|------|------|
+| Team Leader | Tanjim Islam Turja |
+| Member | Enid Hasan |
+| Member | Shuvrato Bhattacharjje |
+| Member | MD. Tanjim Islam |
