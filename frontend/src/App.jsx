@@ -65,7 +65,7 @@ function App() {
             <div className="bg-primary/20 p-2 rounded-lg">
               <Layout className="w-6 h-6 text-primary" />
             </div>
-            <h1 className="font-bold text-xl tracking-tight">SmartOffice</h1>
+            <h1 className="font-bold text-xl tracking-tight">Smart Office</h1>
           </div>
           <button 
             className="lg:hidden p-1 rounded-lg hover:bg-white/5 text-zinc-400 hover:text-zinc-100 transition-colors" 

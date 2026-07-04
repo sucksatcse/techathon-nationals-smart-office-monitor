@@ -291,7 +291,7 @@ app.post('/api/chat', (req, res) => {
   // ── Intent: full office status ────────────────────────────────────────────
   if (/status|office|overview|summary|current|report|how is|what is|show/.test(raw)) {
     const lines = [
-      `🏢 **SmartOffice Status Report**\n`,
+      `🏢 **Smart Office Status Report**\n`,
       `⚡ Total Power: **${totalPower}W**`,
       `📟 Active Devices: **${activeDevices.length}/${devices.length}**`,
       `🚨 Active Alerts: **${alerts.length}**`,
