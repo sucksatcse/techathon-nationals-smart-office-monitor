@@ -61,7 +61,7 @@ function App() {
         lg:relative lg:translate-x-0 lg:shrink-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <div className="px-6 mb-10 flex items-center justify-between">
+        <div className="px-6 mb-10 flex items-center justify-between h-16 shrink-0 overflow-visible">
           <div className="flex items-center gap-3 select-none">
             <img src={smartOfficeLogo} alt="Smart Office Logo" className="h-10 w-auto object-contain block shrink-0" />
             <span className="font-bold text-xl tracking-tight text-zinc-100">Smart Office</span>
