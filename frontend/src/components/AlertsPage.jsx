@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, Clock, CheckCircle2, ShieldAlert, Settings, RefreshCw, Trash2, Calendar } from 'lucide-react';
 
@@ -121,12 +121,12 @@ export default function AlertsPage() {
                 onChange={(e) => handleUpdateSimulatedHour(e.target.value)}
                 className="bg-zinc-900 border border-white/10 px-4 py-2.5 rounded-xl text-sm font-medium text-zinc-200 focus:outline-none focus:border-primary/50 transition-colors w-full sm:w-48"
               >
-                <option value="real">🕰️ System (Real-Time)</option>
-                <option value="8">🌅 08:00 AM (Before Hours)</option>
-                <option value="12">☀️ 12:00 PM (Office Hours)</option>
-                <option value="18">🌆 06:00 PM (After Hours)</option>
-                <option value="20">🌙 08:00 PM (After Hours)</option>
-                <option value="23">🌌 11:00 PM (After Hours)</option>
+                <option value="real">­ƒò░´©Å System (Real-Time)</option>
+                <option value="8">­ƒîà 08:00 AM (Before Hours)</option>
+                <option value="12">ÔÿÇ´©Å 12:00 PM (Office Hours)</option>
+                <option value="18">­ƒîå 06:00 PM (After Hours)</option>
+                <option value="20">­ƒîÖ 08:00 PM (After Hours)</option>
+                <option value="23">­ƒîî 11:00 PM (After Hours)</option>
               </select>
             </div>
             
