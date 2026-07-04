@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Zap, AlertTriangle, Monitor, Settings, Activity, Home, Menu, X, Sun, Moon } from 'lucide-react';
+import { Zap, AlertTriangle, Monitor, Settings, Activity, Home, Menu, X, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficeMap from './components/OfficeMap';
 import Analytics from './components/Analytics';
@@ -62,9 +62,7 @@ function App() {
       `}>
         <div className="px-6 mb-10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="bg-primary/20 p-2 rounded-lg">
-              <Layout className="w-6 h-6 text-primary" />
-            </div>
+            <img src="/logo.png" alt="Smart Office Logo" className="w-9 h-9 rounded-full object-cover" />
             <h1 className="font-bold text-xl tracking-tight">Smart Office</h1>
           </div>
           <button
@@ -144,8 +142,8 @@ function App() {
                 : <Moon className="w-4 h-4 text-indigo-400" />}
             </button>
 
-            <div className="w-10 h-10 rounded-full bg-zinc-800 border border-white/10 flex items-center justify-center">
-              <Zap className="w-5 h-5 text-accent" />
+            <div className="w-10 h-10 rounded-full overflow-hidden border border-white/10">
+              <img src="/logo.png" alt="Logo" className="w-full h-full object-cover" />
             </div>
           </div>
         </header>
