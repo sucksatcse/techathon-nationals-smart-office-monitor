@@ -19,12 +19,18 @@ export default function FloatingChat() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef(null);
+  const scrollContainerRef = useRef(null);
 
+  // Auto-scroll: only when already near the bottom (like Discord / ChatGPT)
   useEffect(() => {
-    if (open && bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight;
+    const isNearBottom = distanceFromBottom < 80;
+    if (open && isNearBottom) {
+      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [open, messages]);
+  }, [open, messages, loading]);
 
   const handleSend = async () => {
     const trimmed = input.trim();
@@ -88,6 +94,8 @@ export default function FloatingChat() {
               zIndex: 9999,
               width: '360px',
               maxWidth: 'calc(100vw - 32px)',
+              height: '600px',
+              maxHeight: 'calc(100vh - 120px)',
             }}
             className="flex flex-col rounded-2xl overflow-hidden shadow-2xl border border-white/10"
           >
@@ -119,11 +127,12 @@ export default function FloatingChat() {
               </button>
             </div>
 
-            {/* Messages */}
+            {/* Messages — flex:1 fills remaining panel height, minHeight:0 allows shrinking */}
             <div
+              ref={scrollContainerRef}
               className="flex-1 overflow-y-auto p-4 space-y-3"
               style={{
-                height: '320px',
+                minHeight: 0,
                 background: 'rgba(15, 15, 25, 0.97)',
                 backdropFilter: 'blur(20px)',
               }}
