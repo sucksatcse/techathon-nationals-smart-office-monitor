@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Zap, AlertTriangle, Monitor, Settings, Activity, Home, MessageSquare, Menu, X } from 'lucide-react';
+import { Layout, Zap, AlertTriangle, Monitor, Settings, Activity, Home, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import OfficeMap from './components/OfficeMap';
 import Analytics from './components/Analytics';
+import AlertsPage from './components/AlertsPage';
+import FloatingChat from './components/FloatingChat';
 
 const rooms = ['Drawing Room', 'Work Room 1', 'Work Room 2'];
 
@@ -84,12 +86,7 @@ function App() {
             active={activeTab === 'layout'} 
             onClick={() => { setActiveTab('layout'); setSidebarOpen(false); }} 
           />
-          <NavItem 
-            icon={<MessageSquare size={20} />} 
-            label="Discord Bot" 
-            active={activeTab === 'bot'} 
-            onClick={() => { setActiveTab('bot'); setSidebarOpen(false); }} 
-          />
+
           <NavItem 
             icon={<AlertTriangle size={20} />} 
             label="Alerts" 
@@ -204,6 +201,17 @@ function App() {
               </motion.div>
             )}
 
+            {activeTab === 'alerts' && (
+              <motion.div
+                key="alerts"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+              >
+                <AlertsPage />
+              </motion.div>
+            )}
+
             {activeTab === 'analytics' && (
               <motion.div 
                 key="analytics"
@@ -217,6 +225,9 @@ function App() {
           </AnimatePresence>
         </div>
       </main>
+
+      {/* Global Floating Chat — persists across all pages */}
+      <FloatingChat />
     </div>
   );
 }
