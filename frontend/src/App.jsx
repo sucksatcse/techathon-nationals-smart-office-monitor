@@ -6,6 +6,7 @@ import Analytics from './components/Analytics';
 import AlertsPage from './components/AlertsPage';
 import FloatingChat from './components/FloatingChat';
 import { useTheme } from './context/ThemeContext.jsx';
+import smartOfficeLogo from './assets/Smart_Office.png';
 
 const rooms = ['Drawing Room', 'Work Room 1', 'Work Room 2'];
 
@@ -61,11 +62,9 @@ function App() {
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="px-6 mb-10 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="bg-primary/20 p-2 rounded-lg">
-              <Layout className="w-6 h-6 text-primary" />
-            </div>
-            <h1 className="font-bold text-xl tracking-tight">Smart Office</h1>
+          <div className="flex items-center gap-3 select-none">
+            <img src={smartOfficeLogo} alt="Smart Office Logo" className="h-10 w-auto object-contain block shrink-0" />
+            <span className="font-bold text-xl tracking-tight text-zinc-100">Smart Office</span>
           </div>
           <button 
             className="lg:hidden p-1 rounded-lg hover:bg-white/5 text-zinc-400 hover:text-zinc-100 transition-colors" 
