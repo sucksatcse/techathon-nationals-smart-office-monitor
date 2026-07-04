@@ -6,7 +6,6 @@ import Analytics from './components/Analytics';
 import AlertsPage from './components/AlertsPage';
 import FloatingChat from './components/FloatingChat';
 import { useTheme } from './context/ThemeContext.jsx';
-import smartOfficeLogo from './assets/Smart_Office.png';
 
 const rooms = ['Drawing Room', 'Work Room 1', 'Work Room 2'];
 
@@ -33,7 +32,7 @@ function App() {
         console.error('Failed to fetch status:', err);
       }
     };
-    
+
     fetchStatus();
     const pollTimer = setInterval(fetchStatus, 2500);
     return () => clearInterval(pollTimer);
@@ -48,9 +47,9 @@ function App() {
     <div className="flex h-screen w-full bg-background text-zinc-100 font-sans overflow-hidden">
       {/* Sidebar Overlay (mobile) */}
       {sidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/60 z-40 lg:hidden" 
-          onClick={() => setSidebarOpen(false)} 
+        <div
+          className="fixed inset-0 bg-black/60 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
         />
       )}
 
@@ -61,10 +60,15 @@ function App() {
         lg:relative lg:translate-x-0 lg:shrink-0
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
-        <div className="px-6 mb-10 flex items-center justify-center h-16 shrink-0 overflow-visible relative">
-          <img src={smartOfficeLogo} alt="Smart Office Logo" className="h-10 w-auto object-contain block shrink-0 select-none" />
-          <button 
-            className="absolute right-6 lg:hidden p-1 rounded-lg hover:bg-white/5 text-zinc-400 hover:text-zinc-100 transition-colors" 
+        <div className="px-6 mb-10 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="bg-primary/20 p-2 rounded-lg">
+              <Layout className="w-6 h-6 text-primary" />
+            </div>
+            <h1 className="font-bold text-xl tracking-tight">Smart Office</h1>
+          </div>
+          <button
+            className="lg:hidden p-1 rounded-lg hover:bg-white/5 text-zinc-400 hover:text-zinc-100 transition-colors"
             onClick={() => setSidebarOpen(false)}
           >
             <X size={20} />
@@ -72,31 +76,31 @@ function App() {
         </div>
 
         <nav className="flex-1 px-4 space-y-1">
-          <NavItem 
-            icon={<Home size={20} />} 
-            label="Dashboard" 
-            active={activeTab === 'dashboard'} 
-            onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false); }} 
+          <NavItem
+            icon={<Home size={20} />}
+            label="Dashboard"
+            active={activeTab === 'dashboard'}
+            onClick={() => { setActiveTab('dashboard'); setSidebarOpen(false); }}
           />
-          <NavItem 
-            icon={<Monitor size={20} />} 
-            label="Office Layout" 
-            active={activeTab === 'layout'} 
-            onClick={() => { setActiveTab('layout'); setSidebarOpen(false); }} 
+          <NavItem
+            icon={<Monitor size={20} />}
+            label="Office Layout"
+            active={activeTab === 'layout'}
+            onClick={() => { setActiveTab('layout'); setSidebarOpen(false); }}
           />
 
-          <NavItem 
-            icon={<AlertTriangle size={20} />} 
-            label="Alerts" 
-            active={activeTab === 'alerts'} 
-            onClick={() => { setActiveTab('alerts'); setSidebarOpen(false); }} 
+          <NavItem
+            icon={<AlertTriangle size={20} />}
+            label="Alerts"
+            active={activeTab === 'alerts'}
+            onClick={() => { setActiveTab('alerts'); setSidebarOpen(false); }}
             badge={2}
           />
-          <NavItem 
-            icon={<Activity size={20} />} 
-            label="Analytics" 
-            active={activeTab === 'analytics'} 
-            onClick={() => { setActiveTab('analytics'); setSidebarOpen(false); }} 
+          <NavItem
+            icon={<Activity size={20} />}
+            label="Analytics"
+            active={activeTab === 'analytics'}
+            onClick={() => { setActiveTab('analytics'); setSidebarOpen(false); }}
           />
         </nav>
 
@@ -110,8 +114,8 @@ function App() {
         {/* Header */}
         <header className="h-16 lg:h-20 border-b border-white/5 flex items-center justify-between px-4 lg:px-8 bg-background/50 backdrop-blur-md z-10">
           <div className="flex items-center gap-3 lg:gap-4">
-            <button 
-              className="lg:hidden p-2 rounded-lg hover:bg-white/5 text-zinc-400 hover:text-zinc-100 transition-colors" 
+            <button
+              className="lg:hidden p-2 rounded-lg hover:bg-white/5 text-zinc-400 hover:text-zinc-100 transition-colors"
               onClick={() => setSidebarOpen(true)}
             >
               <Menu size={22} />
@@ -138,7 +142,7 @@ function App() {
               title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
             >
               {theme === 'dark'
-                ? <Sun  className="w-4 h-4 text-amber-400" />
+                ? <Sun className="w-4 h-4 text-amber-400" />
                 : <Moon className="w-4 h-4 text-indigo-400" />}
             </button>
 
@@ -152,7 +156,7 @@ function App() {
         <div className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8">
           <AnimatePresence mode="wait">
             {activeTab === 'dashboard' && (
-              <motion.div 
+              <motion.div
                 key="dashboard"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -169,38 +173,38 @@ function App() {
 
                 {/* Sub-sections */}
                 <div className="dashboard-main-grid">
-                   <div className="min-w-0 space-y-8">
-                      <OfficeMap devices={apiData?.devices || []} />
-                   </div>
-                   <div className="space-y-6">
-                      <div className="dashboard-card">
-                        <h3 className="font-semibold mb-4">Quick Room Status</h3>
-                        <div className="space-y-4">
-                          {apiData ? apiData.rooms.map(room => (
-                            <div key={room.name} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5">
-                              <div>
-                                <span className="block font-medium">{room.name}</span>
-                                <span className="text-xs text-zinc-400">{room.active_count} active &middot; {room.power_usage}W</span>
-                              </div>
-                              <span className={`text-xs font-medium ${room.active_count === room.total_count ? 'text-red-400' : 'text-primary'}`}>
-                                {room.active_count === room.total_count ? 'All ON' : 'Normal'}
-                              </span>
+                  <div className="min-w-0 space-y-8">
+                    <OfficeMap devices={apiData?.devices || []} />
+                  </div>
+                  <div className="space-y-6">
+                    <div className="dashboard-card">
+                      <h3 className="font-semibold mb-4">Quick Room Status</h3>
+                      <div className="space-y-4">
+                        {apiData ? apiData.rooms.map(room => (
+                          <div key={room.name} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5">
+                            <div>
+                              <span className="block font-medium">{room.name}</span>
+                              <span className="text-xs text-zinc-400">{room.active_count} active &middot; {room.power_usage}W</span>
                             </div>
-                          )) : rooms.map(room => (
-                            <div key={room} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5">
-                              <span>{room}</span>
-                              <span className="text-xs text-zinc-500 font-medium">Loading...</span>
-                            </div>
-                          ))}
-                        </div>
+                            <span className={`text-xs font-medium ${room.active_count === room.total_count ? 'text-red-400' : 'text-primary'}`}>
+                              {room.active_count === room.total_count ? 'All ON' : 'Normal'}
+                            </span>
+                          </div>
+                        )) : rooms.map(room => (
+                          <div key={room} className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5">
+                            <span>{room}</span>
+                            <span className="text-xs text-zinc-500 font-medium">Loading...</span>
+                          </div>
+                        ))}
                       </div>
-                   </div>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             )}
-            
+
             {activeTab === 'layout' && (
-              <motion.div 
+              <motion.div
                 key="layout"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -225,7 +229,7 @@ function App() {
             )}
 
             {activeTab === 'analytics' && (
-              <motion.div 
+              <motion.div
                 key="analytics"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -246,13 +250,12 @@ function App() {
 
 function NavItem({ icon, label, active, onClick, badge }) {
   return (
-    <button 
+    <button
       onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${
-        active 
-          ? 'bg-primary/10 text-primary border border-primary/20' 
+      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${active
+          ? 'bg-primary/10 text-primary border border-primary/20'
           : 'text-zinc-400 hover:text-zinc-100 hover:bg-white/5 border border-transparent'
-      }`}
+        }`}
     >
       <span className={`${active ? 'text-primary' : 'text-zinc-500 group-hover:text-zinc-300'}`}>{icon}</span>
       <span className="font-medium flex-1 text-left">{label}</span>
